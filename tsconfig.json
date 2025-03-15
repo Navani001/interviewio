@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": true,
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -20,8 +23,16 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
+   
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "types": ["cypress","node", "babel__core", "babel__generator", "babel__template"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/lib/titleautocomplete"
+, "jest.setup.js", "jest.setup.js", "tailwind.config.js"  ],
   "exclude": ["node_modules"]
 }
