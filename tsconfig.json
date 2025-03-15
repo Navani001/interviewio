@@ -34,5 +34,7 @@
     ".next/types/**/*.ts",
     "src/lib/titleautocomplete"
 , "jest.setup.js", "jest.setup.js", "tailwind.config.js"  ],
-  "exclude": ["node_modules"]
+
+  "exclude": ["node_modules"],
+  
 }

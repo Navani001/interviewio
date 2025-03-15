@@ -1,1 +1,1 @@
-export * from './authoptions'
+export * from './authoptions';

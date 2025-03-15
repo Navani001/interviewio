@@ -2,15 +2,15 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 // types imports
-import type { NextAuthConfig, Session } from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 
 
 // import { JWT } from "next-auth/jwt";
 
 import GoogleProvider from "next-auth/providers/google";
 
-import { postRequest } from "../axios/axios";
 import { JWT } from "next-auth/jwt";
+import { postRequest } from "../axios/axios";
 
 // Modify NextAuth types with custom properties
 

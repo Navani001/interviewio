@@ -1,6 +1,5 @@
 "use client"
 import { signIn } from "next-auth/react";
-import React from "react";
 
 export function GoogleSign() {
     return (
