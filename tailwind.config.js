@@ -15,6 +15,9 @@ primary:{
   '50': '#666666'
 }
     },
+    fontFamily:{
+      poppins:['var(--font-poppins)']
+    },
     extend: {},
   },
   darkMode: "class",
