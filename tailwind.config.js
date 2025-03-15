@@ -1,7 +1,6 @@
 
 
 import {nextui} from '@nextui-org/theme';
-import type { Config } from "tailwindcss";
 
 export default {
   content: [
@@ -31,4 +30,4 @@ export default {
   },
   plugins: [nextui(),require('@tailwindcss/typography'),
     require('@nextui-org/react')],
-} satisfies Config;
+} 
