@@ -1,9 +1,10 @@
 "use client";
-
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef, useState } from "react";
 
+import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+import { useEffect, useRef, useState } from "react";
+// Import SearchBox with proper typing
 mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
 
 const locations = [
@@ -14,12 +15,12 @@ const locations = [
 
 // Sample heat data points - replace with your actual heat data
 const heatData = [
-    { lng: 78.17336378284944, lat: 10.659130671537582 },
+    { lng: 78.17336378284944, lat: 10.659130671537582 },    
     { lng: 78.17336378284944, lat: 10.660000671537582 },
     { lng: 78.17336378284944, lat: 10.661000671537582 },
     { lng: 78.17436378284944, lat: 10.659130671537582 },
     { lng: 78.17236378284944, lat: 10.659130671537582 },
-    { lng: 77.28001701113311, lat: 11.493044346877113 },
+    // { lng: 77.28001701113311, lat: 11.493044346877113 },
     // , Longitude: 
 ];
 
@@ -28,11 +29,16 @@ const DISTANCE_THRESHOLD = 50;
 
 export function MapBox() {
     const mapContainer = useRef<HTMLDivElement>(null);
+
     const map = useRef<mapboxgl.Map | null>(null);
     const [userLocation, setUserLocation] = useState<{ lng: number, lat: number } | null>(null);
     const [isNearHeatmap, setIsNearHeatmap] = useState(false);
     const [nearestDistance, setNearestDistance] = useState<number | null>(null);
     const [showAlert, setShowAlert] = useState(false);
+
+    const geocoderContainerRef = useRef<any>(null);
+
+    const [inputValue, setInputValue] = useState("");
     const alertShownRef = useRef(false);
 
     // Calculate distance between two points in meters using the Haversine formula
@@ -71,6 +77,9 @@ export function MapBox() {
 
     useEffect(() => {
         if (map.current || !mapContainer.current) return;
+        const MapboxDirections = require('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
+        import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css');
+        import('@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css');
 
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
@@ -78,7 +87,8 @@ export function MapBox() {
             center: [78.17336378284944, 10.659130671537582],
             zoom: 7
         });
-
+        
+        
         // Add geolocation control
         const geolocateControl = new mapboxgl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
@@ -87,7 +97,23 @@ export function MapBox() {
         });
 
         map.current.addControl(geolocateControl);
+        const directions = new MapboxDirections({
+            accessToken: mapboxgl.accessToken,
+            unit: 'metric',
+            profile: 'mapbox/driving',
+            alternatives: true,
+            congestion: true,
+            routePadding: 50,
+            voice_instructions:true,
+            steps: true,
+            controls: {
+                inputs: true,
+                instructions: true,
+                profileSwitcher: true
+            }
+        });
 
+        map.current.addControl(directions, 'top-left');
         // Listen for the geolocate event
         geolocateControl.on('geolocate', (e: any) => {
             const lng = e.coords.longitude;
@@ -102,7 +128,14 @@ export function MapBox() {
                 alertShownRef.current = true;
             }
         });
+        const geocoder = new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken || '',
+            mapboxgl: mapboxgl as any,
+        });
 
+        if (geocoderContainerRef.current) {
+            geocoderContainerRef.current.appendChild(geocoder.onAdd(map.current));
+        }
         // Also check regularly for position updates (every 10 seconds)
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
@@ -125,11 +158,12 @@ export function MapBox() {
                 console.error("Error getting location:", error);
             },
             {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
+                enableHighAccuracy: false,
+                maximumAge: 30000, // Accept positions up to 30 seconds old
+                timeout: 10000 //
             }
         );
+        
 
         // Add markers with popups
         locations.forEach(loc => {
@@ -150,10 +184,13 @@ export function MapBox() {
 
         map.current.on("click", (e) => {
             console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
+            e.originalEvent.stopPropagation(); 
         });
 
         map.current.on("load", () => {
             if (!map.current) return;
+
+
             map.current.addSource('cctv', {
                 type: 'geojson',
                 data: {
@@ -229,7 +266,7 @@ export function MapBox() {
             });
 
             // Add actual heatmap data instead of placeholder
-            const heatmapFeatures:any = heatData.map(point => ({
+            const heatmapFeatures: any = heatData.map(point => ({
                 type: "Feature",
                 properties: {},
                 geometry: { type: "Point", coordinates: [point.lng, point.lat] }
@@ -264,7 +301,7 @@ export function MapBox() {
             });
 
             // Add 50m buffer circles around heatmap points
-            const bufferSource:any = {
+            const bufferSource: any = {
                 type: "geojson",
                 data: {
                     type: "FeatureCollection",
@@ -307,26 +344,17 @@ export function MapBox() {
             }
             navigator.geolocation.clearWatch(watchId);
         };
-    }, [isNearHeatmap]);
+    }, []);
 
     // Close alert modal
     const closeAlert = () => {
         setShowAlert(false);
     };
 
-    // Reset alert to show again after 5 minutes
-    useEffect(() => {
-        if (alertShownRef.current) {
-            const timer = setTimeout(() => {
-                alertShownRef.current = false;
-            }, 5 * 60 * 1000); // 5 minutes
-
-            return () => clearTimeout(timer);
-        }
-    }, [isNearHeatmap]);
-
     return (
-        <div className="relative">
+        <div className="relative ">
+            {/* <div ref={geocoderContainerRef} className=""></div> */}
+
             <div ref={mapContainer} style={{ height: "100vh" }} />
 
             {/* Alert Modal */}
