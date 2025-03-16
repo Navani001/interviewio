@@ -1,3 +1,4 @@
+const {heroui} = require('@heroui/theme');
 
 
 import {nextui} from '@nextui-org/theme';
@@ -9,7 +10,8 @@ export default {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/@nextui-org/theme/dist/components/(button|ripple|spinner).js"
+    "./node_modules/@nextui-org/theme/dist/components/(button|ripple|spinner).js",
+    "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {
@@ -28,6 +30,6 @@ export default {
      
     },
   },
-  plugins: [nextui(),require('@tailwindcss/typography'),
-    require('@nextui-org/react')],
+  darkMode: "class",
+  plugins: [nextui(),require('@tailwindcss/typography'),require('@nextui-org/react'),heroui()],
 } 
