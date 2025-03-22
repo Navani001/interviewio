@@ -104,7 +104,7 @@ const authOptions = {
     logo: token.logo,  // Ensure logo is properly assigned
     name: token.name,
     email: token.email || "",
-    role:token.role,
+    role:token.user,
     token: token.token, // Ensure access token is correctly mapped
   };
 

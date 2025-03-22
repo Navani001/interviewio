@@ -4,9 +4,8 @@ import { Button, Input } from "@heroui/react";
 
 export default async function Home() {
   const data:any=await auth()
-      console.log(data)
   return (
     <div>
-     <MapBox/></div>
+      <MapBox role={data.user.role }/></div>
   );
 }
