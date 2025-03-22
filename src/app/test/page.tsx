@@ -1,5 +1,4 @@
 import { auth } from "@/utils";
-import { MapBox } from "./screens";
 import { Button, Input } from "@heroui/react";
 
 export default async function Home() {
@@ -7,6 +6,10 @@ export default async function Home() {
       console.log(data)
   return (
     <div>
-     <MapBox/></div>
+      <Button color="primary"   type="submit">
+        Submit
+      </Button>
+      <Input label="Email"  type="email" color="success" />
+    </div>
   );
 }

@@ -1,25 +1,56 @@
 "use client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-
+import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css"
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"
 import { useEffect, useRef, useState } from "react";
 // Import SearchBox with proper typing
 mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
 
 const locations = [
-    { lng: 78.17336378284944, lat: 10.659130671537582, popup: "New York" },
-    { lng: 78.17336378284944, lat: 10.660000671537582, popup: "Los Angeles" },
-    { lng: 78.17336378284944, lat: 10.661000671537582, popup: "Chicago" },
+   
+    { lat: 8.845984527202937, lng: 78.15552859024577, popup: "cctv3" },
+    { lat: 8.816130284467018, lng: 78.13767580739574, popup: "cctv3"  },
+    { lat: 8.822237030667546, lng: 78.18642763748622, popup: "cctv3"  },
+    { lat: 8.759129127634482, lng: 78.12256960652263, popup: "cctv3"  },
+    { lat: 9.031432134262941, lng: 78.0529592214414, popup: "cctv3"  },
+    { lat: 8.8550147670838, lng: 78.14155078095376, popup: "cctv3"  },
+    // { lng: 78.17336378284944, lat: 10.660000671537582, popup: "Los Angeles" },
+    // { lng: 78.17336378284944, lat: 10.661000671537582, popup: "Chicago" },
 ];
-
+function createCustomMarker() {
+    const marker = document.createElement('div');
+    marker.style.backgroundImage = 'url("./police.png")'; // Replace with your image URL
+    marker.style.width = '25px';  // Adjust width
+    marker.style.height = '25px'; // Adjust height
+    marker.style.backgroundSize = 'cover';
+    marker.style.borderRadius = '50%';  // Optional: Makes it circular
+    return marker;
+}
 // Sample heat data points - replace with your actual heat data
 const heatData = [
-    { lng: 78.17336378284944, lat: 10.659130671537582 },    
-    { lng: 78.17336378284944, lat: 10.660000671537582 },
-    { lng: 78.17336378284944, lat: 10.661000671537582 },
-    { lng: 78.17436378284944, lat: 10.659130671537582 },
-    { lng: 78.17236378284944, lat: 10.659130671537582 },
+    // { lng: 78.17336378284944, lat: 10.659130671537582 },    
+    // { lng: 78.17336378284944, lat: 10.660000671537582 },
+    // { lng: 78.17336378284944, lat: 10.661000671537582 },
+    // { lng: 78.17436378284944, lat: 10.659130671537582 },
+    // { lng: 78.17236378284944, lat: 10.659130671537582 },
+   
+ 
+    { lat: 8.770877442319748, lng: 78.16479804498293 },
+    { lat: 8.800735338940154, lng: 78.10231330500781 },
+    { lat: 8.836018837924486, lng: 78.12909247928286 },
+    { lat: 8.825162735809483, lng: 78.16136481751175 },
+    { lat: 8.777592270267476, lng: 78.06523342268456 },
+    { lat: 8.812199437684951, lng: 78.12703151716543 },
+    { lat: 8.8024974833269,   lng: 78.13470246954091 },
+    { lat: 8.807663119466921, lng: 78.13808769849255 },
+    { lat: 8.803417685800296, lng: 78.1562837400188 },
+    { lat: 8.74114795294788,  lng: 78.16516407574544 },
+    { lat: 8.786955364643235, lng: 78.19777973672151 },
+    { lat: 8.763204078147233, lng: 78.15486439333202 },
+    { lat: 8.730628417854245, lng: 78.15623768432047 },
+    { lat: 8.772026161956754, lng: 78.15778263668251 }
     // { lng: 77.28001701113311, lat: 11.493044346877113 },
     // , Longitude: 
 ];
@@ -29,17 +60,20 @@ const DISTANCE_THRESHOLD = 50;
 
 export function MapBox() {
     const mapContainer = useRef<HTMLDivElement>(null);
-
+    
     const map = useRef<mapboxgl.Map | null>(null);
     const [userLocation, setUserLocation] = useState<{ lng: number, lat: number } | null>(null);
+    const [markerLocation, setMarkerLocation] = useState<{ lng: number, lat: number } | null>(null);
+    const markerEnabledRef = useRef(false);
     const [isNearHeatmap, setIsNearHeatmap] = useState(false);
     const [nearestDistance, setNearestDistance] = useState<number | null>(null);
     const [showAlert, setShowAlert] = useState(false);
 
     const geocoderContainerRef = useRef<any>(null);
-
-    const [inputValue, setInputValue] = useState("");
+    const [model,setModel]=useState(false);
+    const [marker, setMarker] = useState(false);
     const alertShownRef = useRef(false);
+
 
     // Calculate distance between two points in meters using the Haversine formula
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -74,12 +108,12 @@ export function MapBox() {
         setNearestDistance(minDistance);
         return false;
     };
-
     useEffect(() => {
+        
         if (map.current || !mapContainer.current) return;
         const MapboxDirections = require('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
-        import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css');
-        import('@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css');
+        // import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css');
+        // import('@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css');
 
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
@@ -104,13 +138,11 @@ export function MapBox() {
             alternatives: true,
             congestion: true,
             routePadding: 50,
-            voice_instructions:true,
+            // voice_instructions:true,
+            // instructions: false,
+            
             steps: true,
-            controls: {
-                inputs: true,
-                instructions: true,
-                profileSwitcher: true
-            }
+            interactive: false,
         });
 
         map.current.addControl(directions, 'top-left');
@@ -166,25 +198,26 @@ export function MapBox() {
         
 
         // Add markers with popups
-        locations.forEach(loc => {
-            const marker = new mapboxgl.Marker()
-                .setLngLat([loc.lng, loc.lat])
-                .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
-
-            if (map.current) {
-                map.current.on('zoom', () => {
-                    if (map.current && map.current.getZoom() >= 7) {
-                        marker.addTo(map.current); // Show marker when zoom is 7 or more
-                    } else {
-                        marker.remove(); // Hide marker when zoom is less than 7
-                    }
-                });
-            }
-        });
-
-        map.current.on("click", (e) => {
+      
+        
+        map.current.on("click", (e: any) => {
             console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
-            e.originalEvent.stopPropagation(); 
+            console.log("Marker enabled:", markerEnabledRef.current);
+
+            if (markerEnabledRef.current) {
+                // Create a new marker at the clicked location
+                new mapboxgl.Marker()
+                    .setLngLat([e.lngLat.lng, e.lngLat.lat])
+                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>Custom Marker</h3><p>Lat: ${e.lngLat.lat.toFixed(6)}, Lng: ${e.lngLat.lng.toFixed(6)}</p>`))
+                    .addTo(map.current);
+
+                // Update state
+                setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+                alert("Marker")
+                // Reset marker flag after placing marker
+                setMarker(false);
+                markerEnabledRef.current = false;
+            }
         });
 
         map.current.on("load", () => {
@@ -196,6 +229,18 @@ export function MapBox() {
                 data: {
                     "type": "FeatureCollection",
                     "features": [{
+                        "type": "Feature",
+                        "properties": {
+                            "title": "CCTV Camera 1",
+                            "description": "Main Street Surveillance"
+                        },
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [
+                                78.17336378284944, 10.659130671537582
+                            ]
+                        }
+                    },{
                         "type": "Feature",
                         "properties": {
                             "title": "CCTV Camera 1",
@@ -221,6 +266,25 @@ export function MapBox() {
                 "paint": {
                     "text-color": "#000000"
                 },
+            });
+            locations.forEach(loc => {
+                console.log(loc)
+                // const marker = new mapboxgl.Marker()
+                //     .setLngLat([loc.lng, loc.lat])
+                //     .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
+                const marker = new mapboxgl.Marker({ element: createCustomMarker() })
+                    .setLngLat([loc.lng, loc.lat])
+                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
+                map.current.on('zoom', () => {
+                   
+                    if (map.current && map.current.getZoom() >= 7) {
+                        console.log("added")
+                        marker.addTo(map.current); // Show marker when zoom is 7 or more
+                    } else {
+                        marker.remove(); // Hide marker when zoom is less than 7
+                    }
+                });
+
             });
 
             // Add click event to show popups for CCTV layer
@@ -356,9 +420,27 @@ export function MapBox() {
             {/* <div ref={geocoderContainerRef} className=""></div> */}
 
             <div ref={mapContainer} style={{ height: "100vh" }} />
+            <div className="absolute top-3 right-10"> <button onClick={() => {
+                setMarker(true);
+                markerEnabledRef.current = true;
+            }} className="bg-blue-900">mark a place</button></div>
 
             {/* Alert Modal */}
             {showAlert && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-md">
+                        <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
+                        <p className="mb-4">You are currently within 50 meters of a heatmap area. Please be aware of your surroundings.</p>
+                        <button
+                            onClick={closeAlert}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        >
+                            I understand
+                        </button>
+                    </div>
+                </div>
+            )}
+            {model && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg max-w-md">
                         <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
