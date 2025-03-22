@@ -64,6 +64,7 @@ const authOptions = {
         user.logo = data.data.user.logo;
         user.name = data.data.user.name;
         user.email = data.data.user.email;
+        user.role=data.data.user.role;
         user.token = data.data.token; // Make sure the token is assigned to the user object
       }
       
@@ -84,6 +85,7 @@ const authOptions = {
     token.logo = user.logo;
     token.name = user.name;
     token.email = user.email;
+    token.user=user.role
     
     // Make sure to grab the token from the user object
     token.token = user.token; 
@@ -102,6 +104,7 @@ const authOptions = {
     logo: token.logo,  // Ensure logo is properly assigned
     name: token.name,
     email: token.email || "",
+    role:token.role,
     token: token.token, // Ensure access token is correctly mapped
   };
 
