@@ -31,5 +31,5 @@ export default {
     },
   },
   darkMode: "class",
-  plugins: [nextui(,require('@tailwindcss/typography'),require('@nextui-org/react'),heroui()],
+  plugins: [nextui(),require('@tailwindcss/typography'),require('@nextui-org/react'),heroui()],
 } 
