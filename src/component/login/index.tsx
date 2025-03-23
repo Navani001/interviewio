@@ -4,6 +4,7 @@ import { BiLogOut } from "react-icons/bi";
 import { ButtonComponent } from "../button";
 import { Input } from "@heroui/react";
 import { FcGoogle } from "react-icons/fc";
+import { signIn } from "next-auth/react";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
@@ -50,6 +51,7 @@ export const Login = () => {
         <p className="text-xl pb-5">OR</p>
           <ButtonComponent
             buttonIcon={<FcGoogle size={24} />}
+            handleOnClick={() => signIn("google")}
             buttonText="Signin with google"
           />
         </div>

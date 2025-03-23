@@ -5,12 +5,13 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css"
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"
 import { useEffect, useRef, useState } from "react";
-import { SelectComponent } from "@/component";
+import { ComonPopup, Modals, SelectComponent } from "@/component";
 import { cctvLocations, heatData, locations } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
 import { createCCTVMarker, createCustomMarker } from "@/utils/marker/marker";
-import { Button } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { postRequest } from "@/utils";
+import { FeaturedTickIcon } from "@/asserts";
 mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
 const DISTANCE_THRESHOLD = 50;
 
@@ -21,6 +22,8 @@ export function MapBox({ role,token }: any) {
     const [userLocation, setUserLocation] = useState<{ lng: number, lat: number } | null>(null);
     const [markerLocation, setMarkerLocation] = useState<{ lng: number, lat: number } | null>(null);
     const markerEnabledRef = useRef(false);
+    const markerAssignEnabledRef = useRef(false);
+
     const [isNearHeatmap, setIsNearHeatmap] = useState(false);
     const [nearestDistance, setNearestDistance] = useState<number | null>(null);
     const [showAlert, setShowAlert] = useState(false);
@@ -28,10 +31,19 @@ export function MapBox({ role,token }: any) {
     const geocoderContainerRef = useRef<any>(null);
     const [model, setModel] = useState(false);
     const [marker, setMarker] = useState(false);
+    const [assignMarker, setAssignMarker] = useState(false);
+
     const alertShownRef = useRef(false);
     const cctvMarkersRef = useRef<any[]>([]);
-
     const crimeMarkersRef = useRef<any[]>([]);
+
+
+    const [isAssignOpen,setIsAssignOpen] = useState(false)
+
+    const handeleAssignCreate  = ()=>{
+        setIsAssignOpen(false)
+    }
+
 
     const heatmapLayersCreated = useRef(false);
     const mapShowChange = (val: string) => {
@@ -162,8 +174,29 @@ export function MapBox({ role,token }: any) {
 
         map.current.on("click", (e: any) => {
             console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
-            console.log("Marker enabled:", markerEnabledRef.current);
+            console.log("Marker enabled:", markerAssignEnabledRef.current);
 
+            if (markerAssignEnabledRef.current && map.current) {
+                // Create a new marker at the clicked location
+                new mapboxgl.Marker()
+                    .setLngLat([e.lngLat.lng, e.lngLat.lat])
+                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>Custom Marker</h3><p>Lat: ${e.lngLat.lat.toFixed(6)}, Lng: ${e.lngLat.lng.toFixed(6)}</p>`))
+                    .addTo(map.current);
+                console.log('test')
+                // alert("assign marker")
+                setIsAssignOpen(true)
+                // Update state
+                // const fetchBackend=async ()=>{
+                //     console.log('Fetch')
+                //     await postRequest("/api/crime/create", { crimeTypeId: 1, description: "testing1", lat: e.lngLat.lat, long: e.lngLat.lng, location: "karur" }, { Authorization: `Bearer ${token}` })
+                // }
+                // fetchBackend();
+                setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+                // alert("Marker")
+                // Reset marker flag after placing marker
+                // setMarker(false);
+                markerEnabledRef.current = false;
+            }
             if (markerEnabledRef.current && map.current) {
                 // Create a new marker at the clicked location
                 new mapboxgl.Marker()
@@ -388,6 +421,10 @@ export function MapBox({ role,token }: any) {
             <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
                 <div>Crimex</div>
                 <div className="!w-[400px] flex gap-2">
+                {role=="admin" && <Button onPress={()=>{
+                  setAssignMarker(true)
+                        markerAssignEnabledRef.current=true;
+                   }}>Assign</Button>}
                    {role=="admin" && <Button onPress={()=>{
                     setMarker(true)
                         markerEnabledRef.current=true;
@@ -434,7 +471,38 @@ export function MapBox({ role,token }: any) {
                     </div>
                 </div>
             )}
-
+<Modals
+        isopen={isAssignOpen}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="">
+            <ComonPopup
+              icon={<FeaturedTickIcon />}
+              bodyContent={
+                <div>
+                  <p className="font-semibold text-[19px] text-content2-100 pb-3">Enter survey name</p>
+                  <Input
+                    placeholder="Survey Name"
+                  />
+                </div>
+              }
+              button1Text="Cancel"
+              button2Text="Create Survey"
+              Button1Variant="bordered"
+              Button2Variant="bordered"
+              button1Bgcolor="bg-transparent"
+              Button1BaseClassName="border border-secondary-700 bg-transparent"
+              Button1textClassName="text-secondary-1001"
+              onButton1Click={()=>setIsAssignOpen(false)}
+              onButton2Click={handeleAssignCreate}
+            />
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName="h-[18rem] overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
             {/* Status indicator */}
             {role == "user" && <div className="absolute bottom-4 right-4 p-2 bg-white text-black rounded shadow">
                 {userLocation ? (
