@@ -5,62 +5,16 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css"
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"
 import { useEffect, useRef, useState } from "react";
-// Import SearchBox with proper typing
+import { SelectComponent } from "@/component";
+import { cctvLocations, heatData, locations } from "./data";
+import { calculateDistance } from "@/component/map/mapUtils";
+import { createCCTVMarker, createCustomMarker } from "@/utils/marker/marker";
 mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
-
-const locations = [
-   
-    { lat: 8.845984527202937, lng: 78.15552859024577, popup: "cctv3" },
-    { lat: 8.816130284467018, lng: 78.13767580739574, popup: "cctv3"  },
-    { lat: 8.822237030667546, lng: 78.18642763748622, popup: "cctv3"  },
-    { lat: 8.759129127634482, lng: 78.12256960652263, popup: "cctv3"  },
-    { lat: 9.031432134262941, lng: 78.0529592214414, popup: "cctv3"  },
-    { lat: 8.8550147670838, lng: 78.14155078095376, popup: "cctv3"  },
-    // { lng: 78.17336378284944, lat: 10.660000671537582, popup: "Los Angeles" },
-    // { lng: 78.17336378284944, lat: 10.661000671537582, popup: "Chicago" },
-];
-function createCustomMarker() {
-    const marker = document.createElement('div');
-    marker.style.backgroundImage = 'url("./police.png")'; // Replace with your image URL
-    marker.style.width = '25px';  // Adjust width
-    marker.style.height = '25px'; // Adjust height
-    marker.style.backgroundSize = 'cover';
-    marker.style.borderRadius = '50%';  // Optional: Makes it circular
-    return marker;
-}
-// Sample heat data points - replace with your actual heat data
-const heatData = [
-    // { lng: 78.17336378284944, lat: 10.659130671537582 },    
-    // { lng: 78.17336378284944, lat: 10.660000671537582 },
-    // { lng: 78.17336378284944, lat: 10.661000671537582 },
-    // { lng: 78.17436378284944, lat: 10.659130671537582 },
-    // { lng: 78.17236378284944, lat: 10.659130671537582 },
-   
- 
-    { lat: 8.770877442319748, lng: 78.16479804498293 },
-    { lat: 8.800735338940154, lng: 78.10231330500781 },
-    { lat: 8.836018837924486, lng: 78.12909247928286 },
-    { lat: 8.825162735809483, lng: 78.16136481751175 },
-    { lat: 8.777592270267476, lng: 78.06523342268456 },
-    { lat: 8.812199437684951, lng: 78.12703151716543 },
-    { lat: 8.8024974833269,   lng: 78.13470246954091 },
-    { lat: 8.807663119466921, lng: 78.13808769849255 },
-    { lat: 8.803417685800296, lng: 78.1562837400188 },
-    { lat: 8.74114795294788,  lng: 78.16516407574544 },
-    { lat: 8.786955364643235, lng: 78.19777973672151 },
-    { lat: 8.763204078147233, lng: 78.15486439333202 },
-    { lat: 8.730628417854245, lng: 78.15623768432047 },
-    { lat: 8.772026161956754, lng: 78.15778263668251 }
-    // { lng: 77.28001701113311, lat: 11.493044346877113 },
-    // , Longitude: 
-];
-
-// Distance threshold in meters
 const DISTANCE_THRESHOLD = 50;
 
-export function MapBox() {
+export function MapBox({ role }: any) {
+    console.log(role);
     const mapContainer = useRef<HTMLDivElement>(null);
-    
     const map = useRef<mapboxgl.Map | null>(null);
     const [userLocation, setUserLocation] = useState<{ lng: number, lat: number } | null>(null);
     const [markerLocation, setMarkerLocation] = useState<{ lng: number, lat: number } | null>(null);
@@ -68,30 +22,19 @@ export function MapBox() {
     const [isNearHeatmap, setIsNearHeatmap] = useState(false);
     const [nearestDistance, setNearestDistance] = useState<number | null>(null);
     const [showAlert, setShowAlert] = useState(false);
-
+    const [mapShow, setMapShow] = useState("all");
     const geocoderContainerRef = useRef<any>(null);
-    const [model,setModel]=useState(false);
+    const [model, setModel] = useState(false);
     const [marker, setMarker] = useState(false);
     const alertShownRef = useRef(false);
+    const cctvMarkersRef = useRef<any[]>([]);
 
+    const crimeMarkersRef = useRef<any[]>([]);
 
-    // Calculate distance between two points in meters using the Haversine formula
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371e3; // Earth's radius in meters
-        const φ1 = lat1 * Math.PI / 180; // Convert to radians
-        const φ2 = lat2 * Math.PI / 180;
-        const Δφ = (lat2 - lat1) * Math.PI / 180;
-        const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c; // Distance in meters
-    };
-
-    // Check if location is within 50 meters of any heatmap point
+    const heatmapLayersCreated = useRef(false);
+    const mapShowChange = (val: string) => {
+        setMapShow(val)
+    }
     const checkProximityToHeatmap = (lng: number, lat: number) => {
         let minDistance = Number.MAX_VALUE;
 
@@ -104,32 +47,83 @@ export function MapBox() {
                 return true;
             }
         }
-
         setNearestDistance(minDistance);
         return false;
     };
     useEffect(() => {
-        
+        if (!map.current || !heatmapLayersCreated.current) return;
+        console.log("changer")
+        // Handle crime heatmap layers visibility
+        if (map.current.getLayer('dynamic-heatmap')) {
+            map.current.setLayoutProperty(
+                'dynamic-heatmap',
+                'visibility',
+
+                mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
+
+            );
+        }
+        if (map.current.getLayer('heatmap-buffer-circles')) {
+            map.current.setLayoutProperty(
+                'heatmap-buffer-circles',
+                'visibility',
+                mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'   
+            );
+        }
+
+        // Handle CCTV markers visibility
+
+        cctvMarkersRef.current.forEach(marker => {
+
+            if (mapShow === 'all' || mapShow === 'cctv') {
+
+                marker.addTo(map.current);
+
+            } else {
+
+                marker.remove();
+
+            }
+
+        });
+
+        console.log(crimeMarkersRef)
+
+        // Handle crime location markers visibility
+
+        crimeMarkersRef.current.forEach(marker => {
+
+            if (mapShow === 'all' || mapShow === 'crime') {
+
+                marker.addTo(map.current);
+
+            } else {
+
+                marker.remove();
+
+            }
+
+        });
+
+    }, [mapShow]);
+    useEffect(() => {
+
         if (map.current || !mapContainer.current) return;
         const MapboxDirections = require('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
-        // import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css');
-        // import('@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css');
 
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
             style: "mapbox://styles/navanihk/cm89q8a4k00es01safi2zeeju",
             center: [78.17336378284944, 10.659130671537582],
-            zoom: 7
+            zoom: 7, attributionControl: false,
+            logoPosition: 'bottom-right' // Set this to an invalid position to hide it
         });
-        
-        
         // Add geolocation control
         const geolocateControl = new mapboxgl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
             trackUserLocation: true,
             showUserHeading: true
         });
-
         map.current.addControl(geolocateControl);
         const directions = new MapboxDirections({
             accessToken: mapboxgl.accessToken,
@@ -140,13 +134,12 @@ export function MapBox() {
             routePadding: 50,
             // voice_instructions:true,
             // instructions: false,
-            
+
             steps: true,
             interactive: false,
         });
 
-        map.current.addControl(directions, 'top-left');
-        // Listen for the geolocate event
+        map.current.addControl(directions, 'bottom-left');
         geolocateControl.on('geolocate', (e: any) => {
             const lng = e.coords.longitude;
             const lat = e.coords.latitude;
@@ -195,11 +188,9 @@ export function MapBox() {
                 timeout: 10000 //
             }
         );
-        
 
         // Add markers with popups
-      
-        
+
         map.current.on("click", (e: any) => {
             console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
             console.log("Marker enabled:", markerEnabledRef.current);
@@ -222,114 +213,50 @@ export function MapBox() {
 
         map.current.on("load", () => {
             if (!map.current) return;
+            map.current.loadImage('/camera.png', (error, image) => {
+                if (error) throw error;
+                if (!image) return;
 
-
-            map.current.addSource('cctv', {
-                type: 'geojson',
-                data: {
-                    "type": "FeatureCollection",
-                    "features": [{
-                        "type": "Feature",
-                        "properties": {
-                            "title": "CCTV Camera 1",
-                            "description": "Main Street Surveillance"
-                        },
-                        "geometry": {
-                            "type": "Point",
-                            "coordinates": [
-                                78.17336378284944, 10.659130671537582
-                            ]
-                        }
-                    },{
-                        "type": "Feature",
-                        "properties": {
-                            "title": "CCTV Camera 1",
-                            "description": "Main Street Surveillance"
-                        },
-                        "geometry": {
-                            "type": "Point",
-                            "coordinates": [
-                                78.17336378284944, 10.659130671537582
-                            ]
-                        }
-                    }]
-                }
+                map.current.addImage('camera', image);
             });
 
-            map.current.addLayer({
-                id: 'cctv2',
-                type: 'symbol',
-                "layout": {
-                    "icon-image": "rocket"
-                },
-                source: 'cctv',
-                "paint": {
-                    "text-color": "#000000"
-                },
+            // map.current.addLayer({
+            //     id: 'cctv2',
+            //     type: 'symbol',
+            //     "layout": {
+            //         "icon-image": "camera",
+            //         'icon-size': 0.06,
+
+            //     },
+            //     source: 'cctv',
+
+            // });
+            // Add CCTV camera markers
+            cctvMarkersRef.current = [];
+            cctvLocations.forEach(camera => {
+                const markerElement = createCCTVMarker();
+
+                const marker = new mapboxgl.Marker({ element: markerElement })
+                    .setLngLat([camera.lng, camera.lat])
+                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>${camera.title}</h3><p>${camera.description}</p>`))
+                    .addTo(map.current);
+                cctvMarkersRef.current.push(marker);
+
             });
             locations.forEach(loc => {
-                console.log(loc)
-                // const marker = new mapboxgl.Marker()
-                //     .setLngLat([loc.lng, loc.lat])
-                //     .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
-                const marker = new mapboxgl.Marker({ element: createCustomMarker() })
+
+                const markerElement = createCustomMarker();
+
+                const marker = new mapboxgl.Marker({ element: markerElement })
+
                     .setLngLat([loc.lng, loc.lat])
+
                     .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
-                map.current.on('zoom', () => {
-                   
-                    if (map.current && map.current.getZoom() >= 7) {
-                        console.log("added")
-                        marker.addTo(map.current); // Show marker when zoom is 7 or more
-                    } else {
-                        marker.remove(); // Hide marker when zoom is less than 7
-                    }
-                });
-
-            });
-
-            // Add click event to show popups for CCTV layer
-            map.current.on('click', 'cctv2', (e) => {
-                if (!e.features || e.features.length === 0 || !map.current) return;
-
-                const feature: any = e.features[0];
-                const coordinates = feature.geometry.coordinates.slice();
-                const title = feature.properties.title;
-                const description = feature.properties.description;
-
-                // Create popup content
-                const popupContent = `
-                    <h3>${title}</h3>
-                    <p>${description}</p>
-                `;
-
-                // Ensure that if the map is zoomed out such that multiple
-                // copies of the feature are visible, the popup appears
-                // over the copy being pointed to.
-                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                }
-
-                new mapboxgl.Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(popupContent)
-                    .addTo(map.current);
-            });
-
-            // Change cursor to pointer when hovering over CCTV points
-            map.current.on('mouseenter', 'cctv2', () => {
-                if (map.current) {
-                    map.current.getCanvas().style.cursor = 'pointer';
+                if (mapShow === 'all' || mapShow === 'crime') {
+                    marker.addTo(map.current);
                 }
             });
 
-            // Change cursor back when leaving CCTV points
-            map.current.on('mouseleave', 'cctv2', () => {
-                if (map.current) {
-                    map.current.getCanvas().style.cursor = '';
-                }
-            });
-
-            // Add actual heatmap data instead of placeholder
             const heatmapFeatures: any = heatData.map(point => ({
                 type: "Feature",
                 properties: {},
@@ -361,7 +288,12 @@ export function MapBox() {
                     ],
                     "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
                     "heatmap-opacity": 0.8
-                }
+                },
+                layout: {
+
+                    visibility: mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
+
+                },
             });
 
             // Add 50m buffer circles around heatmap points
@@ -386,6 +318,11 @@ export function MapBox() {
                 id: "heatmap-buffer-circles",
                 type: "circle",
                 source: "heatmap-buffers",
+                layout: {
+
+                    visibility: mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
+
+                },
                 paint: {
                     "circle-radius": {
                         stops: [
@@ -399,6 +336,7 @@ export function MapBox() {
                     "circle-stroke-color": "rgba(255, 0, 0, 0.3)"
                 }
             });
+            heatmapLayersCreated.current = true;
         });
 
         return () => {
@@ -416,14 +354,30 @@ export function MapBox() {
     };
 
     return (
-        <div className="relative ">
+        <div className="relative  w-full h-screen  ">
             {/* <div ref={geocoderContainerRef} className=""></div> */}
+            <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
+                <div>Crimex</div>
+                <div className="!w-[400px]">
+                    <SelectComponent
 
+                        value={mapShow}
+
+                        setValue={mapShowChange}
+
+                        contents={[
+
+                            { key: "all", label: "all" },
+
+                            { key: "cctv", label: "cctv" },
+
+                            { key: "crime", label: "crime" }
+
+                        ]}
+
+                    />
+                </div></div>
             <div ref={mapContainer} style={{ height: "100vh" }} />
-            <div className="absolute top-3 right-10"> <button onClick={() => {
-                setMarker(true);
-                markerEnabledRef.current = true;
-            }} className="bg-blue-900">mark a place</button></div>
 
             {/* Alert Modal */}
             {showAlert && (
@@ -440,7 +394,7 @@ export function MapBox() {
                     </div>
                 </div>
             )}
-            {model && (
+            {role == "user" && model && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg max-w-md">
                         <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
@@ -456,7 +410,7 @@ export function MapBox() {
             )}
 
             {/* Status indicator */}
-            <div className="absolute bottom-4 right-4 p-2 bg-white rounded shadow">
+            {role == "user" && <div className="absolute bottom-4 right-4 p-2 bg-white text-black rounded shadow">
                 {userLocation ? (
                     <div>
                         <p className="text-sm font-bold">Your Location:</p>
@@ -474,6 +428,9 @@ export function MapBox() {
                     <p className="text-sm">Waiting for location...</p>
                 )}
             </div>
+            }
         </div>
+        // Updated container and header
+
     );
 }
