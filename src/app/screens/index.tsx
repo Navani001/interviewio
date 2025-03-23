@@ -6,7 +6,7 @@ import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css"
 import { useEffect, useRef, useState } from "react";
 import { ComonPopup, Modals, SelectComponent } from "@/component";
-import { cctvLocations, heatData, locations } from "./data";
+import { cctvLocations, locations } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
 import { createCCTVMarker, createCustomMarker } from "@/utils/marker/marker";
 import { Button, Input } from "@heroui/react";
@@ -16,14 +16,12 @@ mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2a
 const DISTANCE_THRESHOLD = 50;
 
 export function MapBox({ role,token }: any) {
-    console.log(role);
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const [userLocation, setUserLocation] = useState<{ lng: number, lat: number } | null>(null);
     const [markerLocation, setMarkerLocation] = useState<{ lng: number, lat: number } | null>(null);
     const markerEnabledRef = useRef(false);
     const markerAssignEnabledRef = useRef(false);
-
     const [isNearHeatmap, setIsNearHeatmap] = useState(false);
     const [nearestDistance, setNearestDistance] = useState<number | null>(null);
     const [showAlert, setShowAlert] = useState(false);
@@ -32,30 +30,72 @@ export function MapBox({ role,token }: any) {
     const [model, setModel] = useState(false);
     const [marker, setMarker] = useState(false);
     const [assignMarker, setAssignMarker] = useState(false);
-
     const alertShownRef = useRef(false);
     const cctvMarkersRef = useRef<any[]>([]);
+    const [crimeType,setCrimeType]=useState("")
+    const heatData = useRef<any>([]);
     const crimeMarkersRef = useRef<any[]>([]);
-
-
     const [isAssignOpen,setIsAssignOpen] = useState(false)
+    const updateHeatmapData = () => {
+        if (!map.current || !map.current.getSource('crimex')) return;
 
+        const heatmapFeatures = heatData.current.map((point:any) => ({
+            type: "Feature",
+            properties: {},
+            geometry: {
+                type: "Point",
+                coordinates: [parseFloat(point.long), parseFloat(point.lat)]
+            }
+        }));
+
+        // Update the main heatmap source
+        map.current.getSource('crimex').setData({
+            type: "FeatureCollection",
+            features: heatmapFeatures
+        });
+
+        // Update the buffer circles source
+        if (map.current.getSource('heatmap-buffers')) {
+            map.current.getSource('heatmap-buffers').setData({
+                type: "FeatureCollection",
+                features: heatmapFeatures
+            });
+        }
+
+        console.log("Heatmap data updated with", heatmapFeatures.length, "points");
+    };
+    useEffect(() => {
+        const fetchBackend = async () => {
+            const payload:any = {}
+            if (crimeType !== "all") {
+                payload.crimeTypeId = parseInt(crimeType)
+            }
+            const data:any = await postRequest("/api/crime", payload, { Authorization: `Bearer ${token}` })
+            console.log(data.data)
+
+            // Create a new reference to update the data
+            heatData.current = [...data.data]
+
+            // Force an update of the heatmap if the map is already loaded
+            if (map.current && map.current.getSource('crimex')) {
+                updateHeatmapData();
+            }
+        }
+        fetchBackend()
+    }, [crimeType])
     const handeleAssignCreate  = ()=>{
         setIsAssignOpen(false)
     }
-
-
     const heatmapLayersCreated = useRef(false);
     const mapShowChange = (val: string) => {
         setMapShow(val)
     }
     const checkProximityToHeatmap = (lng: number, lat: number) => {
         let minDistance = Number.MAX_VALUE;
-
-        for (const point of heatData) {
-            const distance = calculateDistance(lat, lng, point.lat, point.lng);
+        for (const point of heatData.current) {
+            console.log(point)
+            const distance = calculateDistance(lat, lng, parseFloat(point.lat), parseFloat(point.long));
             minDistance = Math.min(minDistance, distance);
-
             if (distance <= DISTANCE_THRESHOLD) {
                 setNearestDistance(distance);
                 return true;
@@ -64,6 +104,7 @@ export function MapBox({ role,token }: any) {
         setNearestDistance(minDistance);
         return false;
     };
+   
     useEffect(() => {
         if (!map.current || !heatmapLayersCreated.current) return;
         console.log("changer")
@@ -72,9 +113,7 @@ export function MapBox({ role,token }: any) {
             map.current.setLayoutProperty(
                 'dynamic-heatmap',
                 'visibility',
-
                 mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
-
             );
         }
         if (map.current.getLayer('heatmap-buffer-circles')) {
@@ -84,21 +123,13 @@ export function MapBox({ role,token }: any) {
                 mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
             );
         }
-
         // Handle CCTV markers visibility
-
         cctvMarkersRef.current.forEach(marker => {
-
             if (mapShow === 'all' || mapShow === 'cctv') {
-
                 marker.addTo(map.current);
-
             } else {
-
                 marker.remove();
-
             }
-
         });
 
         console.log(crimeMarkersRef)
@@ -320,10 +351,10 @@ export function MapBox({ role,token }: any) {
                 }
             });
 
-            const heatmapFeatures: any = heatData.map(point => ({
+            const heatmapFeatures: any = heatData.current.map((point:any) => ({
                 type: "Feature",
                 properties: {},
-                geometry: { type: "Point", coordinates: [point.lng, point.lat] }
+                geometry: { type: "Point", coordinates: [parseFloat(point.long), parseFloat(point.lat)] }
             }));
 
             map.current.addSource("crimex", {
@@ -358,18 +389,16 @@ export function MapBox({ role,token }: any) {
 
                 },
             });
-
-            // Add 50m buffer circles around heatmap points
             const bufferSource: any = {
                 type: "geojson",
                 data: {
                     type: "FeatureCollection",
-                    features: heatData.map(point => ({
+                    features: heatData.current.map((point:any) => ({
                         type: "Feature",
                         properties: {},
                         geometry: {
                             type: "Point",
-                            coordinates: [point.lng, point.lat]
+                            coordinates: [parseFloat(point.long), parseFloat(point.lat)]
                         }
                     }))
                 }
@@ -409,6 +438,8 @@ export function MapBox({ role,token }: any) {
             }
         };
     }, []);
+   
+   
 
     // Close alert modal
     const closeAlert = () => {
@@ -421,6 +452,16 @@ export function MapBox({ role,token }: any) {
             <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
                 <div>Crimex</div>
                 <div className="!w-[400px] flex gap-2">
+                    <SelectComponent
+                        value={crimeType}
+                        setValue={setCrimeType}
+                        contents={[
+                            { key: "1", label: "all" },
+                            { key: "2", label: "theft" },
+                            { key: "3", label: "traffic" }
+                        ]}
+
+                    />
                 {role=="admin" && <Button onPress={()=>{
                   setAssignMarker(true)
                         markerAssignEnabledRef.current=true;
