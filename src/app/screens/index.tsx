@@ -9,10 +9,12 @@ import { SelectComponent } from "@/component";
 import { cctvLocations, heatData, locations } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
 import { createCCTVMarker, createCustomMarker } from "@/utils/marker/marker";
+import { Button } from "@heroui/react";
+import { postRequest } from "@/utils";
 mapboxgl.accessToken = "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
 const DISTANCE_THRESHOLD = 50;
 
-export function MapBox({ role }: any) {
+export function MapBox({ role,token }: any) {
     console.log(role);
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
@@ -67,7 +69,7 @@ export function MapBox({ role }: any) {
             map.current.setLayoutProperty(
                 'heatmap-buffer-circles',
                 'visibility',
-                mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'   
+                mapShow === 'all' || mapShow === 'crime' ? 'visible' : 'none'
             );
         }
 
@@ -118,13 +120,14 @@ export function MapBox({ role }: any) {
             zoom: 7, attributionControl: false,
             logoPosition: 'bottom-right' // Set this to an invalid position to hide it
         });
-        // Add geolocation control
+        // Add geolocation controal
         const geolocateControl = new mapboxgl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
             trackUserLocation: true,
+            
             showUserHeading: true
         });
-        map.current.addControl(geolocateControl);
+        map.current.addControl(geolocateControl,"bottom-right");
         const directions = new MapboxDirections({
             accessToken: mapboxgl.accessToken,
             unit: 'metric',
@@ -134,7 +137,6 @@ export function MapBox({ role }: any) {
             routePadding: 50,
             // voice_instructions:true,
             // instructions: false,
-
             steps: true,
             interactive: false,
         });
@@ -144,14 +146,6 @@ export function MapBox({ role }: any) {
             const lng = e.coords.longitude;
             const lat = e.coords.latitude;
             setUserLocation({ lng, lat });
-
-            const near = checkProximityToHeatmap(lng, lat);
-            setIsNearHeatmap(near);
-
-            if (near && !alertShownRef.current) {
-                setShowAlert(true);
-                alertShownRef.current = true;
-            }
         });
         const geocoder = new MapboxGeocoder({
             accessToken: mapboxgl.accessToken || '',
@@ -162,32 +156,7 @@ export function MapBox({ role }: any) {
             geocoderContainerRef.current.appendChild(geocoder.onAdd(map.current));
         }
         // Also check regularly for position updates (every 10 seconds)
-        const watchId = navigator.geolocation.watchPosition(
-            (position) => {
-                const lng = position.coords.longitude;
-                const lat = position.coords.latitude;
-                setUserLocation({ lng, lat });
-
-                const near = checkProximityToHeatmap(lng, lat);
-
-                // If user wasn't near before but is now, show alert
-                if (near && !isNearHeatmap && !alertShownRef.current) {
-                    setIsNearHeatmap(true);
-                    setShowAlert(true);
-                    alertShownRef.current = true;
-                } else if (near !== isNearHeatmap) {
-                    setIsNearHeatmap(near);
-                }
-            },
-            (error) => {
-                console.error("Error getting location:", error);
-            },
-            {
-                enableHighAccuracy: false,
-                maximumAge: 30000, // Accept positions up to 30 seconds old
-                timeout: 10000 //
-            }
-        );
+        
 
         // Add markers with popups
 
@@ -195,16 +164,21 @@ export function MapBox({ role }: any) {
             console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
             console.log("Marker enabled:", markerEnabledRef.current);
 
-            if (markerEnabledRef.current) {
+            if (markerEnabledRef.current && map.current) {
                 // Create a new marker at the clicked location
                 new mapboxgl.Marker()
                     .setLngLat([e.lngLat.lng, e.lngLat.lat])
                     .setPopup(new mapboxgl.Popup().setHTML(`<h3>Custom Marker</h3><p>Lat: ${e.lngLat.lat.toFixed(6)}, Lng: ${e.lngLat.lng.toFixed(6)}</p>`))
                     .addTo(map.current);
-
+                console.log('test')
                 // Update state
+                const fetchBackend=async ()=>{
+                    console.log('Fetch')
+                    await postRequest("/api/crime/create", { crimeTypeId: 1, description: "testing1", lat: e.lngLat.lat, long: e.lngLat.lng, location: "karur" }, { Authorization: `Bearer ${token}` })
+                }
+                fetchBackend();
                 setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
-                alert("Marker")
+                // alert("Marker")
                 // Reset marker flag after placing marker
                 setMarker(false);
                 markerEnabledRef.current = false;
@@ -216,9 +190,61 @@ export function MapBox({ role }: any) {
             map.current.loadImage('/camera.png', (error, image) => {
                 if (error) throw error;
                 if (!image) return;
-
-                map.current.addImage('camera', image);
+                if (map.current) {
+                    map.current.addImage('camera', image);
+                }
             });
+            const watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lng = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    setUserLocation({ lng, lat });
+
+                    const near = checkProximityToHeatmap(lng, lat);
+                    if (role === "user") {
+                        const near = checkProximityToHeatmap(lng, lat);
+                        setIsNearHeatmap(near);
+
+                        if (near && !alertShownRef.current) {
+                            setShowAlert(true);
+                            alertShownRef.current = true;
+                        }
+                    } else if (role === "police") {
+                        const fetchBackendData = async () => {
+
+                            const data: any = await postRequest("/api/crime/spotPolice", { lat: lat, long: lng }, { Authorization: `Bearer ${token}` })
+                            console.log(data)
+                            if (data.data.message == "unassigned") {
+                                directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
+                                console.log(data.data.location.long, data.data.location.lat)
+                                directions.setDestination([data.data.location.long, data.data.location.lat]);
+                            } else {
+                                directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
+                                console.log(data.data.crimes[0].crime.lat)
+                                directions.setDestination([data.data.crimes[0].crime.long, data.data.crimes[0].crime.lat]);
+                            }
+                        }
+                        fetchBackendData();
+
+                    }
+                    // If user wasn't near before but is now, show alert
+                    if (near && !isNearHeatmap && !alertShownRef.current) {
+                        setIsNearHeatmap(true);
+                        setShowAlert(true);
+                        alertShownRef.current = true;
+                    } else if (near !== isNearHeatmap) {
+                        setIsNearHeatmap(near);
+                    }
+                },
+                (error) => {
+                    console.error("Error getting location:", error);
+                },
+                {
+                    enableHighAccuracy: false,
+                    maximumAge: 30000, // Accept positions up to 30 seconds old
+                    timeout: 10000 //
+                }
+            );
 
             // map.current.addLayer({
             //     id: 'cctv2',
@@ -235,12 +261,13 @@ export function MapBox({ role }: any) {
             cctvMarkersRef.current = [];
             cctvLocations.forEach(camera => {
                 const markerElement = createCCTVMarker();
-
-                const marker = new mapboxgl.Marker({ element: markerElement })
-                    .setLngLat([camera.lng, camera.lat])
-                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>${camera.title}</h3><p>${camera.description}</p>`))
-                    .addTo(map.current);
-                cctvMarkersRef.current.push(marker);
+                if (map.current) {
+                    const marker = new mapboxgl.Marker({ element: markerElement })
+                        .setLngLat([camera.lng, camera.lat])
+                        .setPopup(new mapboxgl.Popup().setHTML(`<h3>${camera.title}</h3><p>${camera.description}</p>`))
+                        .addTo(map.current);
+                    cctvMarkersRef.current.push(marker);
+                }
 
             });
             locations.forEach(loc => {
@@ -253,7 +280,10 @@ export function MapBox({ role }: any) {
 
                     .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
                 if (mapShow === 'all' || mapShow === 'crime') {
-                    marker.addTo(map.current);
+                    if (map.current) {
+
+                        marker.addTo(map.current);
+                    }
                 }
             });
 
@@ -344,7 +374,6 @@ export function MapBox({ role }: any) {
                 map.current.remove();
                 map.current = null;
             }
-            navigator.geolocation.clearWatch(watchId);
         };
     }, []);
 
@@ -358,21 +387,18 @@ export function MapBox({ role }: any) {
             {/* <div ref={geocoderContainerRef} className=""></div> */}
             <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
                 <div>Crimex</div>
-                <div className="!w-[400px]">
+                <div className="!w-[400px] flex gap-2">
+                   {role=="admin" && <Button onPress={()=>{
+                    setMarker(true)
+                        markerEnabledRef.current=true;
+                   }}>mark the location</Button>}
                     <SelectComponent
-
                         value={mapShow}
-
                         setValue={mapShowChange}
-
                         contents={[
-
                             { key: "all", label: "all" },
-
-                            { key: "cctv", label: "cctv" },
-
-                            { key: "crime", label: "crime" }
-
+                           { key: "cctv", label: "cctv" },
+                           { key: "crime", label: "crime" }
                         ]}
 
                     />

@@ -6,6 +6,6 @@ export default async function Home() {
   const data:any=await auth()
   return (
     <div>
-      <MapBox role={data.user.role }/></div>
+      <MapBox role={data.user.role} token={data.user.token}/></div>
   );
 }

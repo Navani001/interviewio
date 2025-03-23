@@ -4,7 +4,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 // types imports
 import type { NextAuthConfig } from "next-auth";
 
-
 // import { JWT } from "next-auth/jwt";
 
 import GoogleProvider from "next-auth/providers/google";
@@ -14,7 +13,6 @@ import { postRequest } from "../axios/axios";
 
 // Modify NextAuth types with custom properties
 
-
 const authOptions = {
   providers: [ GoogleProvider({
     clientId: process.env.GOOGLE_CLIENT_ID,
@@ -23,7 +21,6 @@ const authOptions = {
             url: `https://accounts.google.com/o/oauth2/auth/authorize?response_type=code&prompt=login`
             },
             
-          
   }),
     CredentialsProvider({
       id: "credentials",
@@ -53,7 +50,7 @@ const authOptions = {
     try {
       
       const data:any = await postRequest("/api/auth/email", { email: user.email });
-      console.log("Data ",data);
+      // console.log("Data ",data);
       
       // This is where the issue is. Your API returns user data nested in data.data.user
       // But you're not accessing the right structure when assigning properties
@@ -66,6 +63,7 @@ const authOptions = {
         user.email = data.data.user.email;
         user.role=data.data.user.role;
         user.token = data.data.token; // Make sure the token is assigned to the user object
+       
       }
       
       return true;
@@ -74,12 +72,12 @@ const authOptions = {
       return false;
     }
   }
-  console.log("user", user);
+  // console.log("user", user);
   return true;
 },
   async jwt({ token, user }:any) {
   if (user) {
-    console.log("User in JWT callback:", user);
+    // console.log("User in JWT callback:", user);
     
     token.id = user.id;
     token.logo = user.logo;
@@ -90,14 +88,14 @@ const authOptions = {
     // Make sure to grab the token from the user object
     token.token = user.token; 
     
-    console.log("Token after JWT callback:", token);
+    // console.log("Token after JWT callback:", token);
   }
   return token;
 }
 ,
     
  async session({ session, token }: { session: any; token: JWT }) {
-  console.log("Token in session callback:", token);
+  // console.log("Token in session callback:", token);
 
   session.user = {
     id: token.id,
@@ -108,7 +106,7 @@ const authOptions = {
     token: token.token, // Ensure access token is correctly mapped
   };
 
-  console.log("Session after session callback:", session);
+  // console.log("Session after session callback:", session);
 
   return session;
 }
@@ -119,6 +117,5 @@ const authOptions = {
     strategy: "jwt",
   },
 } satisfies NextAuthConfig;
-
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
