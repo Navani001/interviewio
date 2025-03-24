@@ -21,7 +21,7 @@ export function SelectComponent({ contents,setValue,value }: SelectComponentProp
             classNames={{
                 base:"h-10",
                 trigger: "min-h-10 py-0 h-10 pt-1",
-            }} label="Select an animal">
+            }} label="Select crime type">
                 {contents.map((content) => (
                     <SelectItem key={content.key}>{content.label}</SelectItem>
                 ))}

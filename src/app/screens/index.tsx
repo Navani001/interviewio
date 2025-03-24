@@ -5,10 +5,20 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { useEffect, useRef, useState } from "react";
-import { ComonPopup, Modals, SelectComponent } from "@/component";
-import {  locations } from "./data";
+import {
+  ButtonComponent,
+  ComonPopup,
+  Modals,
+  SelectComponent,
+} from "@/component";
+import { locations } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
-import { createCCTVMarker, createCustomMarker, creatingCCTVMarker, PoliceMarker } from "@/utils/marker/marker";
+import {
+  createCCTVMarker,
+  createCustomMarker,
+  creatingCCTVMarker,
+  PoliceMarker,
+} from "@/utils/marker/marker";
 import { Button, Checkbox, Textarea } from "@heroui/react";
 import { getRequest, postRequest } from "@/utils";
 import { GiCctvCamera } from "react-icons/gi";
@@ -24,11 +34,13 @@ export function MapBox({ role, token }: any) {
     lng: number;
     lat: number;
   } | null>(null);
+  const [isPoliceAssign, setIsPoliceAssign] = useState(false);
+  const description = "You are assigned to visite that location";
   const [markerLocation, setMarkerLocation] = useState<{
     lng: number;
     lat: number;
   } | null>(null);
-  const [isCrime,setIsCrime]=useState(false);
+  const [isCrime, setIsCrime] = useState(false);
   const markerEnabledRef = useRef(false);
   const markerAssignEnabledRef = useRef(false);
   const [isNearHeatmap, setIsNearHeatmap] = useState(false);
@@ -40,135 +52,138 @@ export function MapBox({ role, token }: any) {
   const [marker, setMarker] = useState(false);
   const [assignMarker, setAssignMarker] = useState(false);
   const alertShownRef = useRef(false);
-    const cctvLocations=useRef<any>([])
-    const setMarkerLocationRef=useRef<any>({})
+  const cctvLocations = useRef<any>([]);
+  const setMarkerLocationRef = useRef<any>({});
   const cctvMarkersRef = useRef<any[]>([]);
   const [crimeType, setCrimeType] = useState("");
   const heatData = useRef<any>([]);
   const crimeMarkersRef = useRef<any[]>([]);
   const policeDataRef = useRef<any[]>([]);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
-
+  const [userSpot, setuserSpot] = useState(false);
   const [isAssignCCTV, setIsAssignCCTV] = useState(false);
   const [isAssignPolice, setIsAssignPolice] = useState(false);
-  const [value, setValue] = useState("");  
-  const [police, setPolice] = useState("");  
+  const [value, setValue] = useState("");
+  const [police, setPolice] = useState("");
 
-  const [crimeDescription,setCrimeDescription] = useState("")
-  
+  const [crimeDescription, setCrimeDescription] = useState("");
+
+  const [predict, setPredict] = useState(false);
 
   const crimes = [
     {
-        key:"1",
-        label:"Theft"
+      key: "1",
+      label: "Theft",
     },
     {
-        key:"2",
-        label:"Robbery"
+      key: "2",
+      label: "Robbery",
     },
     {
-        key:"3",
-        label:"Assault"
+      key: "3",
+      label: "Assault",
     },
     {
-        key:"4",
-        label:"Vehicle Theft"
+      key: "4",
+      label: "Vehicle Theft",
     },
-  ] 
+  ];
 
-    const updateHeatmapData = () => {
-        if (!map.current || !map.current.isStyleLoaded() || !map.current.getSource("crimex")) {
-            console.log("Map or source not ready yet");
-            setTimeout(updateHeatmapData, 200); // Try again shortly
-            return;
-        }
+  const updateHeatmapData = () => {
+    if (
+      !map.current ||
+      !map.current.isStyleLoaded() ||
+      !map.current.getSource("crimex")
+    ) {
+      console.log("Map or source not ready yet");
+      setTimeout(updateHeatmapData, 200); // Try again shortly
+      return;
+    }
 
-        console.log("Updating heatmap with", heatData.current.length, "points");
+    console.log("Updating heatmap with", heatData.current.length, "points");
 
-        try {
-            const heatmapFeatures = heatData.current.map((point:any) => ({
-                type: "Feature",
-                properties: {},
-                geometry: {
-                    type: "Point",
-                    coordinates: [parseFloat(point.long), parseFloat(point.lat)],
-                },
-            }));
+    try {
+      const heatmapFeatures = heatData.current.map((point: any) => ({
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Point",
+          coordinates: [parseFloat(point.long), parseFloat(point.lat)],
+        },
+      }));
 
-            // Update the main heatmap source
-            map.current.getSource("crimex").setData({
-                type: "FeatureCollection",
-                features: heatmapFeatures,
-            });
+      // Update the main heatmap source
+      map.current.getSource("crimex").setData({
+        type: "FeatureCollection",
+        features: heatmapFeatures,
+      });
 
-            // Update the buffer circles source
-            if (map.current.getSource("heatmap-buffers")) {
-                map.current.getSource("heatmap-buffers").setData({
-                    type: "FeatureCollection",
-                    features: heatmapFeatures,
-                });
-            }
+      // Update the buffer circles source
+      if (map.current.getSource("heatmap-buffers")) {
+        map.current.getSource("heatmap-buffers").setData({
+          type: "FeatureCollection",
+          features: heatmapFeatures,
+        });
+      }
 
-            console.log("Heatmap data updated successfully");
-        } catch (error) {
-            console.error("Error updating heatmap:", error);
-        }
-    };
-    useEffect(() => {
-        const fetchBackend = async () => {
-            try {
-                const payload:any = {};
-                if (crimeType !== "all") {
-                    payload.crimeTypeId = parseInt(crimeType);
-                }
-                if(role=="user"){
-                  const data: any = await postRequest("/api/crime/high", payload, {
-                    Authorization: `Bearer ${token}`,
-                  });
-                  heatData.current = [...data.data];
-                }else{
-                  const data: any = await postRequest("/api/crime", payload, {
-                    Authorization: `Bearer ${token}`,
-                  });
-                  heatData.current = [...data.data];
-                }
-               
-
-
-                // Update heatData.current with new data
-               
-
-                // Explicitly call updateHeatmapData to refresh the visualization
-                updateHeatmapData();
-            } catch (error) {
-                console.error("Error fetching crime data:", error);
-            }
-        };
-
-        fetchBackend();
-    }, [crimeType]);
-    useEffect(() => {
-        const fetchBackend = async () => {
-            try {
-            
-                const data: any = await getRequest("/api/cctv");
-
-                console.log("Fetched cctv data:", data.data)
-                cctvLocations.current=data.data;
-            } catch (error) {
-                console.error("Error fetching crime data:", error);
-            }
-        };
-
-        fetchBackend();
-    }, []);
+      console.log("Heatmap data updated successfully");
+    } catch (error) {
+      console.error("Error updating heatmap:", error);
+    }
+  };
   useEffect(() => {
     const fetchBackend = async () => {
       try {
+        const payload: any = {};
+        if (crimeType !== "all") {
+          payload.crimeTypeId = parseInt(crimeType);
+        }
+        if (role == "user") {
+          // const data: any = await postRequest("/api/crime/high", payload, {
+          //   Authorization: `Bearer ${token}`,
+          // });
+          const data: any = await postRequest("/api/crime", payload, {
+            Authorization: `Bearer ${token}`,
+          });
+          heatData.current = [...data.data];
+        } else {
+          const data: any = await postRequest("/api/crime", payload, {
+            Authorization: `Bearer ${token}`,
+          });
+          heatData.current = [...data.data];
+        }
 
+        // Update heatData.current with new data
+
+        // Explicitly call updateHeatmapData to refresh the visualization
+        updateHeatmapData();
+      } catch (error) {
+        console.error("Error fetching crime data:", error);
+      }
+    };
+
+    fetchBackend();
+  }, [crimeType]);
+  useEffect(() => {
+    const fetchBackend = async () => {
+      try {
+        const data: any = await getRequest("/api/cctv");
+
+        console.log("Fetched cctv data:", data.data);
+        cctvLocations.current = data.data;
+      } catch (error) {
+        console.error("Error fetching crime data:", error);
+      }
+    };
+
+    fetchBackend();
+  }, []);
+  useEffect(() => {
+    const fetchBackend = async () => {
+      try {
         const data: any = await getRequest("/api/crime/policeLocation");
 
-        console.log("Fetched cctv data:", data.data)
+        console.log("Fetched cctv data:", data.data);
         policeDataRef.current = data.data;
       } catch (error) {
         console.error("Error fetching crime data:", error);
@@ -177,14 +192,14 @@ export function MapBox({ role, token }: any) {
 
     fetchBackend();
   }, []);
-  useEffect(()=>{
-    console.log(heatData.current)
-  },[heatData.current])
+  useEffect(() => {
+    console.log(heatData.current);
+  }, [heatData.current]);
   const handeleAssignCreate = () => {
-    setIsAssignCCTV(false)
-    setIsAssignPolice(false)
-    setValue("")
-    setCrimeDescription("")
+    setIsAssignCCTV(false);
+    setIsAssignPolice(false);
+    setValue("");
+    setCrimeDescription("");
     setIsAssignOpen(false);
   };
   const heatmapLayersCreated = useRef(false);
@@ -202,7 +217,7 @@ export function MapBox({ role, token }: any) {
         parseFloat(point.long)
       );
       minDistance = Math.min(minDistance, distance);
-      if (distance <= DISTANCE_THRESHOLD) {
+      if (distance <= 50) {
         setNearestDistance(distance);
         return true;
       }
@@ -250,14 +265,14 @@ export function MapBox({ role, token }: any) {
       }
     });
   }, [mapShow]);
-    
-    useEffect(() => {
-        // Call updateHeatmapData whenever heatmapLayersCreated changes to true
-        if (heatmapLayersCreated.current && map.current) {
-            console.log("Layers created, updating heatmap data");
-            updateHeatmapData();
-        }
-    }, [heatmapLayersCreated.current]);
+
+  useEffect(() => {
+    // Call updateHeatmapData whenever heatmapLayersCreated changes to true
+    if (heatmapLayersCreated.current && map.current) {
+      console.log("Layers created, updating heatmap data");
+      updateHeatmapData();
+    }
+  }, [heatmapLayersCreated.current]);
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
     const MapboxDirections = require("@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions");
@@ -335,7 +350,7 @@ export function MapBox({ role, token }: any) {
         // }
         // fetchBackend();
         setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
-          setMarkerLocationRef.current = { lng: e.lngLat.lng, lat: e.lngLat.lat }
+        setMarkerLocationRef.current = { lng: e.lngLat.lng, lat: e.lngLat.lat };
         // alert("Marker")
         // Reset marker flag after placing marker
         // setMarker(false);
@@ -343,6 +358,7 @@ export function MapBox({ role, token }: any) {
       }
       if (markerEnabledRef.current && map.current) {
         // Create a new marker at the clicked location
+        setuserSpot(true);
         new mapboxgl.Marker()
           .setLngLat([e.lngLat.lng, e.lngLat.lat])
           .setPopup(
@@ -410,10 +426,10 @@ export function MapBox({ role, token }: any) {
                 { Authorization: `Bearer ${token}` }
               );
               console.log(data);
-                if (data.data.message == "No"){
-                    return 
-
-                }
+              if (data.data.message == "No") {
+                return;
+              }
+              setIsPoliceAssign(true);
               if (data.data.message == "unassigned") {
                 directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
                 console.log(data.data.location.long, data.data.location.lat);
@@ -464,17 +480,15 @@ export function MapBox({ role, token }: any) {
       // });
       // Add CCTV camera markers
       cctvMarkersRef.current = [];
-      cctvLocations.current.forEach((camera:any) => {
-        console.log()
-        const markerElement = camera.isActive? createCCTVMarker():creatingCCTVMarker();
+      cctvLocations.current.forEach((camera: any) => {
+        console.log();
+        const markerElement = camera.isActive
+          ? createCCTVMarker()
+          : creatingCCTVMarker();
         if (map.current) {
           const marker = new mapboxgl.Marker({ element: markerElement })
             .setLngLat([parseFloat(camera.long), parseFloat(camera.lat)])
-            .setPopup(
-              new mapboxgl.Popup().setHTML(
-                `<h3>cctv</h3>`
-              )
-            )
+            .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`))
             .addTo(map.current);
           cctvMarkersRef.current.push(marker);
         }
@@ -483,12 +497,11 @@ export function MapBox({ role, token }: any) {
         const markerElement = PoliceMarker();
         if (map.current) {
           const marker = new mapboxgl.Marker({ element: markerElement })
-            .setLngLat([parseFloat(camera.crime.long), parseFloat(camera.crime.lat)])
-            .setPopup(
-              new mapboxgl.Popup().setHTML(
-                `<h3>cctv</h3>`
-              )
-            )
+            .setLngLat([
+              parseFloat(camera.crime.long),
+              parseFloat(camera.crime.lat),
+            ])
+            .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`))
             .addTo(map.current);
           cctvMarkersRef.current.push(marker);
         }
@@ -623,16 +636,19 @@ export function MapBox({ role, token }: any) {
             ]}
           />
           {role == "admin" && (
-            <Button
-              onPress={() => {
-                setAssignMarker(true);
-                markerAssignEnabledRef.current = true;
-              }}
-            >
-              Assign
-            </Button>
+            <div className="flex gap-2">
+              <Button onPress={() => setPredict(true)}>Predict</Button>
+              <Button
+                onPress={() => {
+                  setAssignMarker(true);
+                  markerAssignEnabledRef.current = true;
+                }}
+              >
+                Assign
+              </Button>
+            </div>
           )}
-          {role == "admin" && (
+          {role == "user" && (
             <Button
               onPress={() => {
                 setMarker(true);
@@ -706,7 +722,10 @@ export function MapBox({ role, token }: any) {
                   <div className="flex justify-around">
                     <div className="flex flex-col items-center gap-1">
                       <div
-                                        onClick={() => { setIsAssignCCTV(!isAssignCCTV);setIsAssignPolice(false) }}
+                        onClick={() => {
+                          setIsAssignCCTV(!isAssignCCTV);
+                          setIsAssignPolice(false);
+                        }}
                         className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md  ${
                           isAssignCCTV
                             ? "border-[#0266da] border-2"
@@ -719,7 +738,10 @@ export function MapBox({ role, token }: any) {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                       <div
-                                        onClick={() => { setIsAssignPolice(!isAssignPolice); setIsAssignCCTV(false) }}
+                        onClick={() => {
+                          setIsAssignPolice(!isAssignPolice);
+                          setIsAssignCCTV(false);
+                        }}
                         className={`p-5 bg-[#3b3b42]  cursor-pointer ${
                           isAssignPolice
                             ? "border-[#0266da] border-2"
@@ -740,27 +762,34 @@ export function MapBox({ role, token }: any) {
                           </SelectItem>
                         ))}
                       </Select> */}
-                                    <SelectComponent
-                                        value={value}
-                                        setValue={setValue}
-                                        contents={crimes}
-                                    />
-                      <div className="flex gap-2 justify-between">
-                        <div className="w-60"><SelectComponent
-                        value={police}
-                        setValue={setPolice}
-                        contents={[{key:"1", label:"raj"}]}
+                      <SelectComponent
+                        value={value}
+                        setValue={setValue}
+                        contents={crimes}
                       />
+                      <div className="flex gap-2 justify-between">
+                        <div className="w-60">
+                          <SelectComponent
+                            value={police}
+                            setValue={setPolice}
+                            contents={[{ key: "1", label: "raj" }]}
+                          />
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          {" "}
+                          <Checkbox
+                            isSelected={isCrime}
+                            onValueChange={setIsCrime}
+                          />{" "}
+                          Crime
+                        </div>
                       </div>
-                        <div className="flex gap-1 items-center"> <Checkbox isSelected={isCrime} onValueChange={setIsCrime} /> isPatroll</div>
-                    </div>
                       <Textarea
-                        label="Description" 
+                        label="Description"
                         value={crimeDescription}
                         onValueChange={setCrimeDescription}
                         placeholder="Enter your description"
                       />
-                      
                     </div>
                   )}
                 </div>
@@ -774,101 +803,247 @@ export function MapBox({ role, token }: any) {
               Button1textClassName="text-secondary-1001"
               Button2textClassName="text-secondary-1001"
               onButton1Click={() => setIsAssignOpen(false)}
-                    onButton2Click={() => {
-                        console.log("Assigning...");
-                        if (isAssignCCTV) {
-                            console.log("cctv assignment");
-                            const fetchBackend = async () => {
-                                const response = await postRequest(
-                                    "/api/cctv/create",
-                                    {
-                                        name: "cctv for test",
-                                        lat: setMarkerLocationRef.current.lat,
-                                        long: setMarkerLocationRef.current.lng,
-                                        location: "karur",
-                                    },
-                                    { Authorization: `Bearer ${token}` }
-                                );
-                                const newCCTV = {
-                                    name: "cctv for test",
-                                    lat: setMarkerLocationRef.current.lat + "",
-                                    long: setMarkerLocationRef.current.lng + "",
-                                    location: "karur"
-                                };
-                              markerAssignEnabledRef.current=false
-                                const markerElement = creatingCCTVMarker();
-                                const newMarker = new mapboxgl.Marker({ element: markerElement })
-                                    .setLngLat([setMarkerLocationRef.current.lng, setMarkerLocationRef.current.lat])
-                                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
-                                if(map.current){
-                                        newMarker.addTo(map.current);
-                                    }
+              onButton2Click={() => {
+                console.log("Assigning...");
+                if (isAssignCCTV) {
+                  console.log("cctv assignment");
+                  const fetchBackend = async () => {
+                    const response = await postRequest(
+                      "/api/cctv/create",
+                      {
+                        name: "cctv for test",
+                        lat: setMarkerLocationRef.current.lat,
+                        long: setMarkerLocationRef.current.lng,
+                        location: "karur",
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                    const newCCTV = {
+                      name: "cctv for test",
+                      lat: setMarkerLocationRef.current.lat + "",
+                      long: setMarkerLocationRef.current.lng + "",
+                      location: "karur",
+                    };
+                    markerAssignEnabledRef.current = false;
+                    const markerElement = creatingCCTVMarker();
+                    const newMarker = new mapboxgl.Marker({
+                      element: markerElement,
+                    })
+                      .setLngLat([
+                        setMarkerLocationRef.current.lng,
+                        setMarkerLocationRef.current.lat,
+                      ])
+                      .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
+                    if (map.current) {
+                      newMarker.addTo(map.current);
+                    }
 
-                                // After successful API call, add the new CCTV to the map
-                                // if (response && map.current) {
-                                //     // Add to local CCTV locations array
-                                   
-                                //     cctvLocations.current.push(newCCTV);
+                    // After successful API call, add the new CCTV to the map
+                    // if (response && map.current) {
+                    //     // Add to local CCTV locations array
 
-                                //     // Create a new marker for this CCTV
-                               
-                            
-                                //     // Only add to map if the current view allows it
-                                //     if (mapShow === "all" || mapShow === "cctv") {
-                                //     }
+                    //     cctvLocations.current.push(newCCTV);
 
-                                //     // Add to the markers reference array
-                                //     // cctvMarkersRef.current.push(newMarker);
-                                // }
-                            };
+                    //     // Create a new marker for this CCTV
 
-                            fetchBackend();
-                        } else {
-                            // Add new data point to heatData.current
-                            heatData.current = [...heatData.current, {
-                                crimeTypeId: parseInt(value),
-                                lat: setMarkerLocationRef.current.lat + "",
-                                long: setMarkerLocationRef.current.lng + ""
-                            }];
-                            console.log("poice",police)
-                            const fetchBackend = async () => {
-                                await postRequest(
-                                    "/api/crime/create",
-                                    {
-                                        crimeTypeId: parseInt(value),
-                                        description: crimeDescription,
-                                        lat: setMarkerLocationRef.current.lat,
-                                        long: setMarkerLocationRef.current.lng,
-                                        location: "karur",
-                                        isPatroll:true,
-                                        loginId:parseInt(value),
-                                        isCrime:isCrime
-                                    },
-                                    { Authorization: `Bearer ${token}` }
-                                );
-                            }
+                    //     // Only add to map if the current view allows it
+                    //     if (mapShow === "all" || mapShow === "cctv") {
+                    //     }
 
-                            fetchBackend();
-                          markerEnabledRef.current = false
+                    //     // Add to the markers reference array
+                    //     // cctvMarkersRef.current.push(newMarker);
+                    // }
+                  };
 
-                            console.log("Added new crime data:", value);
-                          const markerElement = PoliceMarker();
-                          const newMarker = new mapboxgl.Marker({ element: markerElement })
-                            .setLngLat([setMarkerLocationRef.current.lng, setMarkerLocationRef.current.lat])
-                            .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
-                          if (map.current) {
-                            newMarker.addTo(map.current);
-                          }
-                            // Call updateHeatmapData to refresh the visualization
-                            if(isCrime){
+                  fetchBackend();
+                } else {
+                  // Add new data point to heatData.current
+                  heatData.current = [
+                    ...heatData.current,
+                    {
+                      crimeTypeId: parseInt(value),
+                      lat: setMarkerLocationRef.current.lat + "",
+                      long: setMarkerLocationRef.current.lng + "",
+                    },
+                  ];
+                  console.log("poice", police);
+                  const fetchBackend = async () => {
+                    await postRequest(
+                      "/api/crime/create",
+                      {
+                        crimeTypeId: parseInt(value),
+                        description: crimeDescription,
+                        lat: setMarkerLocationRef.current.lat,
+                        long: setMarkerLocationRef.current.lng,
+                        location: "karur",
+                        isPatroll: true,
+                        loginId: parseInt(value),
+                        isCrime: isCrime,
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                  };
 
-                              updateHeatmapData();
-                            }
+                  fetchBackend();
+                  markerEnabledRef.current = false;
 
-                            handeleAssignCreate();
-                        }
-                    }}
+                  console.log("Added new crime data:", value);
+                  const markerElement = PoliceMarker();
+                  const newMarker = new mapboxgl.Marker({
+                    element: markerElement,
+                  })
+                    .setLngLat([
+                      setMarkerLocationRef.current.lng,
+                      setMarkerLocationRef.current.lat,
+                    ])
+                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
+                  if (map.current) {
+                    newMarker.addTo(map.current);
+                  }
+                  // Call updateHeatmapData to refresh the visualization
+                  if (isCrime) {
+                    updateHeatmapData();
+                  }
+
+                  handeleAssignCreate();
+                }
+              }}
             />
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={isPoliceAssign}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="p-4">
+            <p className="font-bold text-2xl text-center text-red-500  text-content2-100 pb-5 pt-3">
+              You are Assigned to the crime spot
+            </p>
+            <p className="text-lg">Description:</p>
+            <p className="text-lg p-4 bg-[#3b3b42] rounded-lg ">
+              {description}
+            </p>
+            <div className="flex justify-center pt-5">
+              <ButtonComponent
+                isIcon={false}
+                buttonText="Accept"
+                ButtonVariant="bordered"
+                bgColor="bg-primary"
+                baseClassName="bg-primary border-none"
+                textClassName="text-background font-semibold text-[16px]"
+                handleOnClick={() => setIsPoliceAssign(false)}
+              />
+            </div>
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={userSpot}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="">
+            <ComonPopup
+              //   icon={<FeaturedTickIcon />}
+              bodyContent={
+                <div>
+                  <p className="text-2xl text-center font-bold pb-8">
+                    Spot the Location
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    <SelectComponent
+                      value={value}
+                      setValue={setValue}
+                      contents={crimes}
+                    />
+                    <Textarea
+                      label="Description"
+                      value={crimeDescription}
+                      onValueChange={setCrimeDescription}
+                      placeholder="Enter your description"
+                    />
+                  </div>
+                </div>
+              }
+              button1Text="Cancel"
+              button2Text="Spot"
+              Button1Variant="bordered"
+              Button2Variant="bordered"
+              button1Bgcolor="bg-transparent"
+              Button1BaseClassName="border border-secondary-700 bg-transparent"
+              Button1textClassName="text-secondary-1001"
+              Button2textClassName="text-secondary-1001"
+              onButton1Click={() => setuserSpot(false)}
+              onButton2Click={() => setuserSpot(false)}
+            />
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={predict}
+        onClose={() => setPredict(false)}
+        hideCloseButton
+        ModalContents={
+          <div className="p-4">
+            <p className="text-2xl text-primary text-center font-bold pb-6">
+              PREDICTIONS
+            </p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col  gap-1">
+                <div className="flex  gap-3">
+                  <div>
+                    <div
+                      className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md flex items-center justify-center `}
+                    >
+                      <GiCctvCamera size={30} />
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-around">
+                    <p>Location: "1,2"</p>
+                    <p>Efficency: 90%</p>
+                  </div>
+                </div>
+                <p className="px-4">CCTV</p>
+              </div>
+              <div className="flex flex-col  gap-1">
+                <div className="flex  gap-3">
+                  <div>
+                    <div
+                      className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md flex items-center justify-center `}
+                    >
+                      <RiPoliceBadgeFill size={30} />
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-around">
+                    <p>Location: "1,2"</p>
+                    <p>Efficency: 90%</p>
+                  </div>
+                </div>
+                <p className="px-4">Police</p>
+              </div>
+            </div>
+            <div className="flex justify-center pt-3">
+            <ButtonComponent
+                isIcon={false}
+                buttonText="Done"
+                ButtonVariant="bordered"
+                bgColor="bg-primary"
+                baseClassName="bg-primary border-none"
+                textClassName="text-background font-semibold text-[16px]"
+                handleOnClick={() => setPredict(false)}
+              />
+              </div>
           </div>
         }
         bodyClassName="p-0"
