@@ -6,6 +6,23 @@ export function createCCTVMarker() {
     marker.style.backgroundSize = 'cover';
     return marker;
 }
+export function creatingCCTVMarker() {
+    const marker = document.createElement('div');
+    marker.style.backgroundImage = 'url("./broken.png")';
+    marker.style.width = '30px';
+    marker.style.height = '30px';
+    marker.style.backgroundSize = 'cover';
+    return marker;
+}
+export function PoliceMarker() {
+    const marker = document.createElement('div');
+    marker.style.backgroundImage = 'url("./policeImage.png")';
+    marker.style.width = '30px';
+    marker.style.height = '30px';
+    marker.style.backgroundSize = 'cover';
+    return marker;
+}
+
 export function createCustomMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./police.png")'; // Replace with your image URL
