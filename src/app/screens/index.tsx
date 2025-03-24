@@ -795,6 +795,7 @@ export function MapBox({ role, token }: any) {
                                     long: setMarkerLocationRef.current.lng + "",
                                     location: "karur"
                                 };
+                              markerAssignEnabledRef.current=false
                                 const markerElement = creatingCCTVMarker();
                                 const newMarker = new mapboxgl.Marker({ element: markerElement })
                                     .setLngLat([setMarkerLocationRef.current.lng, setMarkerLocationRef.current.lat])
@@ -848,6 +849,8 @@ export function MapBox({ role, token }: any) {
                             }
 
                             fetchBackend();
+                          markerEnabledRef.current = false
+
                             console.log("Added new crime data:", value);
                           const markerElement = PoliceMarker();
                           const newMarker = new mapboxgl.Marker({ element: markerElement })
