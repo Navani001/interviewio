@@ -142,7 +142,7 @@ export function MapBox({ role, token }: any) {
           // const data: any = await postRequest("/api/crime/high", payload, {
           //   Authorization: `Bearer ${token}`,
           // });
-          const data: any = await postRequest("/api/crime", payload, {
+          const data: any = await postRequest("/api/crime/high", payload, {
             Authorization: `Bearer ${token}`,
           });
           heatData.current = [...data.data];
@@ -175,8 +175,9 @@ export function MapBox({ role, token }: any) {
         console.error("Error fetching crime data:", error);
       }
     };
-
-    fetchBackend();
+if(role=="admin"){
+  fetchBackend();
+}
   }, []);
   useEffect(() => {
     const fetchBackend = async () => {
