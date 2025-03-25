@@ -1,3 +1,4 @@
+/* globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +7,25 @@
     @apply hidden;
     display: hidden;    
 }
-a.mapboxgl-ctrl-logo{
+a.mapboxgl-ctrl-logo {
     display: hidden !important;
+}
+
+/* Styled Scrollbar */
+.scrollbar-custom::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+    background: #2c2c2e;
+    border-radius: 10px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }

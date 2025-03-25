@@ -7,6 +7,7 @@ import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { useEffect, useRef, useState } from "react";
 import {
   ButtonComponent,
+  Chatbot,
   ComonPopup,
   Modals,
   SelectComponent,
@@ -19,7 +20,7 @@ import {
   creatingCCTVMarker,
   PoliceMarker,
 } from "@/utils/marker/marker";
-import { Button, Checkbox, Textarea } from "@heroui/react";
+import { Button, Checkbox, Drawer, DrawerBody, DrawerContent, DrawerHeader, Textarea, useDisclosure } from "@heroui/react";
 import { getRequest, postRequest } from "@/utils";
 import { GiCctvCamera } from "react-icons/gi";
 import { RiPoliceBadgeFill } from "react-icons/ri";
@@ -69,6 +70,7 @@ export function MapBox({ role, token }: any) {
   const [crimeDescription, setCrimeDescription] = useState("");
 
   const [predict, setPredict] = useState(false);
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
   const crimes = [
     {
@@ -637,6 +639,7 @@ export function MapBox({ role, token }: any) {
           />
           {role == "admin" && (
             <div className="flex gap-2">
+              <Button onPress={onOpen}>AI</Button>
               <Button onPress={() => setPredict(true)}>Predict</Button>
               <Button
                 onPress={() => {
@@ -1050,6 +1053,21 @@ export function MapBox({ role, token }: any) {
         size="lg"
         modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
       />
+      
+      <Drawer isOpen={isOpen} size="xl" onOpenChange={onOpenChange}>
+        <DrawerContent>
+          
+            <>
+              <DrawerHeader className="flex flex-col gap-1 text-2xl">ChatBot</DrawerHeader>
+              <DrawerBody className="bg-black p-0">
+                
+                <Chatbot />
+                
+              </DrawerBody>
+              
+            </>
+        </DrawerContent>
+      </Drawer>
       {/* Status indicator */}
       {role == "user" && (
         <div className="absolute bottom-4 right-4 p-2 bg-white text-black rounded shadow">
