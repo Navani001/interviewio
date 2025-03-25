@@ -51,7 +51,7 @@ export const Login = () => {
         <p className="text-xl pb-5">OR</p>
           <ButtonComponent
             buttonIcon={<FcGoogle size={24} />}
-            handleOnClick={() => signIn("google")}
+            handleOnClick={() => signIn("google",{redirectTo:"/"})}
             buttonText="Signin with google"
           />
         </div>
