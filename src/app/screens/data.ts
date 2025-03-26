@@ -14,6 +14,23 @@ export const cctvLocations = [
         // { lng: 78.17336378284944, lat: 10.661000671537582, popup: "Chicago" },
     ];
 
+   export const crimes = [
+     { key: "1", label: 'Theft' },
+    { key: "2", label: 'Robbery' },
+    { key: "3", label: 'Assault' },
+    { key: "4", label: 'Vehicle Theft' },
+    { key: "5", label: 'Burglary' },
+    { key: "6", label: 'Vandalism' },
+    { key: "7", label: 'Drug Offense' },
+    { key: "8", label: 'Fraud' },
+    { key: "9", label: 'Homickeye'},
+    { key: "10", label: 'Sexual Assault' },
+    { key: "11", label: 'Kkeyna"p"ping' },
+    { key: "12", label: 'Public Disturbance' },
+    { key: "13", label: 'Cybercrime' },
+    { key: "14", label: 'Domestic Violence' }
+  ];
+
 //    export const heatData = [
 //             // { lng: 78.17336378284944, lat: 10.659130671537582 },    
 //             // { lng: 78.17336378284944, lat: 10.660000671537582 },

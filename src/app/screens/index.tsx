@@ -12,7 +12,7 @@ import {
   Modals,
   SelectComponent,
 } from "@/component";
-import { locations } from "./data";
+import { locations,crimes } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
 import {
   createCCTVMarker,
@@ -74,24 +74,7 @@ export function MapBox({ role, token }: any) {
   const [predict, setPredict] = useState(false);
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
-  const crimes = [
-    {
-      key: "1",
-      label: "Theft",
-    },
-    {
-      key: "2",
-      label: "Robbery",
-    },
-    {
-      key: "3",
-      label: "Assault",
-    },
-    {
-      key: "4",
-      label: "Vehicle Theft",
-    },
-  ];
+  
 
   const updateHeatmapData = () => {
     if (
@@ -146,9 +129,7 @@ export function MapBox({ role, token }: any) {
           // const data: any = await postRequest("/api/crime/high", payload, {
           //   Authorization: `Bearer ${token}`,
           // });
-          const data: any = await postRequest("/api/crime/high", payload, {
-            Authorization: `Bearer ${token}`,
-          });
+          const data: any = await getRequest("/api/crime/high");
           heatData.current = [...data.data];
         } else {
           const data: any = await postRequest("/api/crime", payload, {
@@ -194,8 +175,10 @@ if(role=="admin"){
         console.error("Error fetching crime data:", error);
       }
     };
+    if(role!="user"){
 
-    fetchBackend();
+      fetchBackend();
+    }
   }, []);
   useEffect(() => {
     console.log(heatData.current);
@@ -614,11 +597,7 @@ if(role=="admin"){
           <SelectComponent
             value={crimeType}
             setValue={setCrimeType}
-            contents={[
-              { key: "1", label: "all" },
-              { key: "2", label: "theft" },
-              { key: "3", label: "traffic" },
-            ]}
+            contents={crimes}
           />
           {role == "admin" && (
             <div className="flex gap-2">
@@ -634,7 +613,7 @@ if(role=="admin"){
               </Button>
             </div>
           )}
-          {role == "admin" && (
+          {role == "role" && (
             <Button
               onPress={() => {
                 setMarker(true);
@@ -644,15 +623,20 @@ if(role=="admin"){
               mark the location
             </Button>
           )}
-          <SelectComponent
-            value={mapShow}
-            setValue={mapShowChange}
-            contents={[
-              { key: "all", label: "all" },
-              { key: "cctv", label: "cctv" },
-              { key: "crime", label: "crime" },
-            ]}
-          />
+          {
+            role!="user"
+&&
+            <SelectComponent
+              value={mapShow}
+              setValue={mapShowChange}
+              contents={[
+                { key: "all", label: "all" },
+                { key: "cctv", label: "cctv" },
+                { key: "crime", label: "crime" },
+              ]}
+            />
+          }
+         
         </div>
       </div>
       <div ref={mapContainer} style={{ height: "100vh" }} />
@@ -854,17 +838,29 @@ if(role=="admin"){
                   ];
                   console.log("poice", police);
                   const fetchBackend = async () => {
+                    // await postRequest(
+                    //   "/api/crime/create",
+                    //   {
+                    //     crimeTypeId: parseInt(value),
+                    //     description: crimeDescription,
+                    //     lat: setMarkerLocationRef.current.lat,
+                    //     long: setMarkerLocationRef.current.lng,
+                    //     location: "karur",
+                    //     isPatroll: true,
+                    //     loginId: parseInt(value),
+                    //     isCrime: isCrime,
+                    //   },
+                    //   { Authorization: `Bearer ${token}` }
+                    // );
                     await postRequest(
-                      "/api/crime/create",
+                      "/api/crime/create/high",
                       {
                         crimeTypeId: parseInt(value),
                         description: crimeDescription,
                         lat: setMarkerLocationRef.current.lat,
                         long: setMarkerLocationRef.current.lng,
-                        location: "karur",
-                        isPatroll: true,
-                        loginId: parseInt(value),
-                        isCrime: isCrime,
+                        priority:4
+                        
                       },
                       { Authorization: `Bearer ${token}` }
                     );
