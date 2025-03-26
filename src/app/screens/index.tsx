@@ -19,6 +19,7 @@ import {
   createCustomMarker,
   creatingCCTVMarker,
   PoliceMarker,
+  SpotMarker,
 } from "@/utils/marker/marker";
 import { Button, Checkbox, Drawer, DrawerBody, DrawerContent, DrawerHeader, Textarea, useDisclosure } from "@heroui/react";
 import { getRequest, postRequest } from "@/utils";
@@ -30,19 +31,19 @@ const DISTANCE_THRESHOLD = 50;
 
 export function MapBox({ role, token }: any) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
+  const map = useRef<any>(null);
   const [userLocation, setUserLocation] = useState<{
     lng: number;
     lat: number;
   } | null>(null);
   const [isPoliceAssign, setIsPoliceAssign] = useState(false);
-  const description = "You are assigned to visite that location";
   const [markerLocation, setMarkerLocation] = useState<{
     lng: number;
     lat: number;
   } | null>(null);
   const [isCrime, setIsCrime] = useState(false);
   const markerEnabledRef = useRef(false);
+  const [crimeSpotDescription,setCrimeSpotDescription]=useState("")
   const markerAssignEnabledRef = useRef(false);
   const [isNearHeatmap, setIsNearHeatmap] = useState(false);
   const [nearestDistance, setNearestDistance] = useState<number | null>(null);
@@ -330,7 +331,8 @@ if(role=="admin"){
     map.current.on("click", (e: any) => {
       console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
       console.log("Marker enabled:", markerAssignEnabledRef.current);
-
+      setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+      setMarkerLocationRef.current = { lng: e.lngLat.lng, lat: e.lngLat.lat };
       if (markerAssignEnabledRef.current && map.current) {
         // Create a new marker at the clicked location
         // new mapboxgl.Marker()
@@ -352,8 +354,7 @@ if(role=="admin"){
         //     await postRequest("/apifcc/crime/create", { crimeTypeId: 1, description: "testing1", lat: e.lngLat.lat, long: e.lngLat.lng, location: "karur" }, { Authorization: `Bearer ${token}` })
         // }
         // fetchBackend();
-        setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
-        setMarkerLocationRef.current = { lng: e.lngLat.lng, lat: e.lngLat.lat };
+        
         // alert("Marker")
         // Reset marker flag after placing marker
         // setMarker(false);
@@ -362,33 +363,10 @@ if(role=="admin"){
       if (markerEnabledRef.current && map.current) {
         // Create a new marker at the clicked location
         setuserSpot(true);
-        new mapboxgl.Marker()
-          .setLngLat([e.lngLat.lng, e.lngLat.lat])
-          .setPopup(
-            new mapboxgl.Popup().setHTML(
-              `<h3>Custom Marker</h3><p>Lat: ${e.lngLat.lat.toFixed(
-                6
-              )}, Lng: ${e.lngLat.lng.toFixed(6)}</p>`
-            )
-          )
-          .addTo(map.current);
+       
         console.log("test");
         // Update state
-        const fetchBackend = async () => {
-          console.log("Fetch");
-          await postRequest(
-            "/api/crime/create",
-            {
-              crimeTypeId: 1,
-              description: "testing1",
-              lat: e.lngLat.lat,
-              long: e.lngLat.lng,
-              location: "karur",
-            },
-            { Authorization: `Bearer ${token}` }
-          );
-        };
-        fetchBackend();
+       
         setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
         // alert("Marker")
         // Reset marker flag after placing marker
@@ -399,7 +377,7 @@ if(role=="admin"){
 
     map.current.on("load", () => {
       if (!map.current) return;
-      map.current.loadImage("/camera.png", (error, image) => {
+      map.current.loadImage("/camera.png", (error:any, image:any) => {
         if (error) throw error;
         if (!image) return;
         if (map.current) {
@@ -435,11 +413,13 @@ if(role=="admin"){
               setIsPoliceAssign(true);
               if (data.data.message == "unassigned") {
                 directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
-                console.log(data.data.location.long, data.data.location.lat);
+              
                 directions.setDestination([
                   data.data.location.long,
                   data.data.location.lat,
                 ]);
+
+                
               } else {
                 directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
                 console.log(data.data.crimes[0].crime.lat);
@@ -447,6 +427,7 @@ if(role=="admin"){
                   data.data.crimes[0].crime.long,
                   data.data.crimes[0].crime.lat,
                 ]);
+                setCrimeSpotDescription(data.data.crimes[0].crime.description)
               }
             };
             fetchBackendData();
@@ -652,7 +633,7 @@ if(role=="admin"){
               </Button>
             </div>
           )}
-          {role == "user" && (
+          {role == "admin" && (
             <Button
               onPress={() => {
                 setMarker(true);
@@ -930,7 +911,7 @@ if(role=="admin"){
             </p>
             <p className="text-lg">Description:</p>
             <p className="text-lg p-4 bg-[#3b3b42] rounded-lg ">
-              {description}
+              {crimeSpotDescription}
             </p>
             <div className="flex justify-center pt-5">
               <ButtonComponent
@@ -986,7 +967,40 @@ if(role=="admin"){
               Button1textClassName="text-secondary-1001"
               Button2textClassName="text-secondary-1001"
               onButton1Click={() => setuserSpot(false)}
-              onButton2Click={() => setuserSpot(false)}
+              onButton2Click={() => {
+                const fetchBackend = async () => {
+                  console.log("Fetch");
+                  console.log(setMarkerLocationRef.current)
+                  if(
+                    setMarkerLocationRef.current?.lat 
+                  ){
+                    await postRequest(
+                      "/api/crime/create",
+                      {
+                        crimeTypeId: value,
+                        description: crimeDescription,
+                        lat: parseFloat(setMarkerLocationRef.current.lat),
+                        long: parseFloat(setMarkerLocationRef.current.lng),
+                        location: "karur",
+                        isCrime: true,
+                        isFake:false
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                    const markerElement = SpotMarker();
+                    const marker = new mapboxgl.Marker({ element: markerElement })
+                      .setLngLat([setMarkerLocationRef.current.lng, setMarkerLocationRef.current.lat])
+                      .setPopup(new mapboxgl.Popup().setHTML(`<h3>crime created</h3>`));
+
+                    marker.addTo(map.current);
+                  }
+                
+                };
+                fetchBackend();
+                
+                // setuserSpot(false)
+              
+              }}
             />
           </div>
         }

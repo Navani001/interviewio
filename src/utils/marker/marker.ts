@@ -22,6 +22,14 @@ export function PoliceMarker() {
     marker.style.backgroundSize = 'cover';
     return marker;
 }
+export function SpotMarker() {
+    const marker = document.createElement('div');
+    marker.style.backgroundImage = 'url("./spot.jpeg")';
+    marker.style.width = '30px';
+    marker.style.height = '30px';
+    marker.style.backgroundSize = 'cover';
+    return marker;
+}
 
 export function createCustomMarker() {
     const marker = document.createElement('div');
