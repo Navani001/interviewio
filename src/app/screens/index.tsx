@@ -25,6 +25,7 @@ import { Button, Checkbox, Drawer, DrawerBody, DrawerContent, DrawerHeader, Text
 import { getRequest, postRequest } from "@/utils";
 import { GiCctvCamera } from "react-icons/gi";
 import { RiPoliceBadgeFill } from "react-icons/ri";
+import { Recommend } from "./component/recommend";
 mapboxgl.accessToken =
   "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
 const DISTANCE_THRESHOLD = 50;
@@ -1013,59 +1014,21 @@ if(role=="admin"){
         onClose={() => setPredict(false)}
         hideCloseButton
         ModalContents={
-          <div className="p-4">
-            <p className="text-2xl text-primary text-center font-bold pb-6">
-              PREDICTIONS
-            </p>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col  gap-1">
-                <div className="flex  gap-3">
-                  <div>
-                    <div
-                      className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md flex items-center justify-center `}
-                    >
-                      <GiCctvCamera size={30} />
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-around">
-                    <p>Location: "1,2"</p>
-                    <p>Efficency: 90%</p>
-                  </div>
-                </div>
-                <p className="px-4">CCTV</p>
-              </div>
-              <div className="flex flex-col  gap-1">
-                <div className="flex  gap-3">
-                  <div>
-                    <div
-                      className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md flex items-center justify-center `}
-                    >
-                      <RiPoliceBadgeFill size={30} />
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-around">
-                    <p>Location: "1,2"</p>
-                    <p>Efficency: 90%</p>
-                  </div>
-                </div>
-                <p className="px-4">Police</p>
-              </div>
-            </div>
-            <div className="flex justify-center pt-3">
-            <ButtonComponent
-                isIcon={false}
-                buttonText="Done"
-                ButtonVariant="bordered"
-                bgColor="bg-primary"
-                baseClassName="bg-primary border-none"
-                textClassName="text-background font-semibold text-[16px]"
-                handleOnClick={() => setPredict(false)}
-              />
-              </div>
-          </div>
+          <Recommend map={map.current}/>
         }
         bodyClassName="p-0"
         size="lg"
+        ModalFooterContent={<div className="flex justify-center pt-3">
+          <ButtonComponent
+            isIcon={false}
+            buttonText="Done"
+            ButtonVariant="bordered"
+            bgColor="bg-primary"
+            baseClassName="bg-primary border-none"
+            textClassName="text-background font-semibold text-[16px]"
+            handleOnClick={() => setPredict(false)}
+          />
+        </div>}
         modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
       />
       
