@@ -189,6 +189,7 @@ if(role=="admin"){
     setValue("");
     setCrimeDescription("");
     setIsAssignOpen(false);
+    setuserSpot(false)
   };
   const heatmapLayersCreated = useRef(false);
   const mapShowChange = (val: string) => {
@@ -591,14 +592,27 @@ if(role=="admin"){
   return (
     <div className="relative  w-full h-screen  ">
       {/* <div ref={geocoderContainerRef} className=""></div> */}
-      <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
-        <div>Crimex</div>
-        <div className="!w-[400px] flex gap-2">
+      <div className="absolute bg-black py-2 items-center  grid grid-cols-3  z-50 h-15 text-black w-full px-1">
+      <div className="px-5 flex items-center gap-1">
+          <p className="text-3xl text-white">CRIME</p>
+          <p
+            style={{
+              textShadow:
+                "-1px -2px 3px black, 1px -1px 3px black, -1px 1px 3px black, 1px 1px 3px black",
+            }}
+            className="text-5xl text-red-700 font-bold drop-shadow-2xl"
+          >
+            X
+          </p>
+        </div>
+        <div className=" flex gap-2 col-span-2  justify-end px-5">
+          <div className="w-[250px]">
           <SelectComponent
             value={crimeType}
             setValue={setCrimeType}
             contents={crimes}
           />
+          </div>
           {role == "admin" && (
             <div className="flex gap-2">
               <Button onPress={onOpen}>AI</Button>
@@ -613,19 +627,20 @@ if(role=="admin"){
               </Button>
             </div>
           )}
-          {role == "role" && (
+          {role == "user" && (
             <Button
               onPress={() => {
                 setMarker(true);
                 markerEnabledRef.current = true;
               }}
             >
-              mark the location
+              Mark the location
             </Button>
           )}
           {
             role!="user"
 &&
+            <div className="w-[250px]">
             <SelectComponent
               value={mapShow}
               setValue={mapShowChange}
@@ -635,6 +650,7 @@ if(role=="admin"){
                 { key: "crime", label: "crime" },
               ]}
             />
+            </div>
           }
          
         </div>
@@ -838,32 +854,32 @@ if(role=="admin"){
                   ];
                   console.log("poice", police);
                   const fetchBackend = async () => {
-                    // await postRequest(
-                    //   "/api/crime/create",
-                    //   {
-                    //     crimeTypeId: parseInt(value),
-                    //     description: crimeDescription,
-                    //     lat: setMarkerLocationRef.current.lat,
-                    //     long: setMarkerLocationRef.current.lng,
-                    //     location: "karur",
-                    //     isPatroll: true,
-                    //     loginId: parseInt(value),
-                    //     isCrime: isCrime,
-                    //   },
-                    //   { Authorization: `Bearer ${token}` }
-                    // );
                     await postRequest(
-                      "/api/crime/create/high",
+                      "/api/crime/create",
                       {
                         crimeTypeId: parseInt(value),
                         description: crimeDescription,
                         lat: setMarkerLocationRef.current.lat,
                         long: setMarkerLocationRef.current.lng,
-                        priority:4
-                        
+                        location: "karur",
+                        isPatroll: true,
+                        loginId: parseInt(value),
+                        isCrime: isCrime,
                       },
                       { Authorization: `Bearer ${token}` }
                     );
+                    // await postRequest(
+                    //   "/api/crime/create/high",
+                    //   {
+                    //     crimeTypeId: parseInt(value),
+                    //     description: crimeDescription,
+                    //     lat: setMarkerLocationRef.current.lat,
+                    //     long: setMarkerLocationRef.current.lng,
+                    //     priority:4
+                        
+                    //   },
+                    //   { Authorization: `Bearer ${token}` }
+                    // );
                   };
 
                   fetchBackend();
@@ -995,7 +1011,7 @@ if(role=="admin"){
                 };
                 fetchBackend();
                 
-                // setuserSpot(false)
+                setuserSpot(false)
               
               }}
             />
@@ -1028,7 +1044,7 @@ if(role=="admin"){
         modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
       />
       
-      <Drawer isOpen={isOpen} size="xl" onOpenChange={onOpenChange}>
+      <Drawer isOpen={isOpen} size="lg" onOpenChange={onOpenChange}>
         <DrawerContent>
           
             <>

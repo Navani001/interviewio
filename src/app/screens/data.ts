@@ -7,7 +7,7 @@ export const cctvLocations = [
         { lat: 8.845984527202937, lng: 78.15552859024577, popup: "cctv3" },
         { lat: 8.816130284467018, lng: 78.13767580739574, popup: "cctv3"  },
         { lat: 8.822237030667546, lng: 78.18642763748622, popup: "cctv3"  },
-        { lat: 8.759129127634482, lng: 78.12256960652263, popup: "cctv3"  },
+        { lat: 0, lng:0, popup: "cctv3"  },
         { lat: 9.031432134262941, lng: 78.0529592214414, popup: "cctv3"  },
         { lat: 8.8550147670838, lng: 78.14155078095376, popup: "cctv3"  },
         // { lng: 78.17336378284944, lat: 10.660000671537582, popup: "Los Angeles" },
