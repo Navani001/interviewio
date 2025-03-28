@@ -613,7 +613,7 @@ if(role=="admin"){
               </Button>
             </div>
           )}
-          {role == "role" && (
+          {role == "user" && (
             <Button
               onPress={() => {
                 setMarker(true);
