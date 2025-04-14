@@ -7,9 +7,10 @@ interface SelectItem {
 interface SelectComponentProps{
     contents: SelectItem[];
     value: string;
-    setValue:(val:string)=>void
+    setValue:(val:string)=>void,
+    label?:string
 }
-export function SelectComponent({ contents,setValue,value }: SelectComponentProps) {
+export function SelectComponent({ contents, setValue, value, label = "Select crime type" }: SelectComponentProps) {
     return (
         <div className="flex w-full flex-wrap md:flex-nowrap gap-4">
             <Select
@@ -21,7 +22,7 @@ export function SelectComponent({ contents,setValue,value }: SelectComponentProp
             classNames={{
                 base:"h-10",
                 trigger: "min-h-10 py-0 h-10 pt-1",
-            }} label="Select crime type">
+            }} label={label}>
                 {contents.map((content) => (
                     <SelectItem key={content.key}>{content.label}</SelectItem>
                 ))}

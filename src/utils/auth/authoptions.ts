@@ -10,9 +10,6 @@ import GoogleProvider from "next-auth/providers/google";
 
 import { JWT } from "next-auth/jwt";
 import { postRequest } from "../axios/axios";
-
-// Modify NextAuth types with custom properties
-
 const authOptions = {
   providers: [ GoogleProvider({
     clientId: process.env.GOOGLE_CLIENT_ID,
@@ -51,12 +48,10 @@ const authOptions = {
       
       const data:any = await postRequest("/api/auth/email", { email: user.email });
       // console.log("Data ",data);
-      
       // This is where the issue is. Your API returns user data nested in data.data.user
       // But you're not accessing the right structure when assigning properties
-      
       // Fix: Access correct structure and assign properly
-      if (data.data && data.data.user) {
+      if (data.data && data.data.user){
         user.id = data.data.user.id;
         user.logo = data.data.user.logo;
         user.name = data.data.user.name;

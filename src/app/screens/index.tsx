@@ -12,7 +12,7 @@ import {
   Modals,
   SelectComponent,
 } from "@/component";
-import { locations,crimes } from "./data";
+import { locations, crimes } from "./data";
 import { calculateDistance } from "@/component/map/mapUtils";
 import {
   createCCTVMarker,
@@ -44,7 +44,7 @@ export function MapBox({ role, token }: any) {
   } | null>(null);
   const [isCrime, setIsCrime] = useState(false);
   const markerEnabledRef = useRef(false);
-  const [crimeSpotDescription,setCrimeSpotDescription]=useState("")
+  const [crimeSpotDescription, setCrimeSpotDescription] = useState("")
   const markerAssignEnabledRef = useRef(false);
   const [isNearHeatmap, setIsNearHeatmap] = useState(false);
   const [nearestDistance, setNearestDistance] = useState<number | null>(null);
@@ -72,9 +72,9 @@ export function MapBox({ role, token }: any) {
   const [crimeDescription, setCrimeDescription] = useState("");
 
   const [predict, setPredict] = useState(false);
-  const {isOpen, onOpen, onOpenChange} = useDisclosure();
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  
+
 
   const updateHeatmapData = () => {
     if (
@@ -160,9 +160,9 @@ export function MapBox({ role, token }: any) {
         console.error("Error fetching crime data:", error);
       }
     };
-if(role=="admin"){
-  fetchBackend();
-}
+    if (role == "admin") {
+      fetchBackend();
+    }
   }, []);
   useEffect(() => {
     const fetchBackend = async () => {
@@ -175,7 +175,7 @@ if(role=="admin"){
         console.error("Error fetching crime data:", error);
       }
     };
-    if(role!="user"){
+    if (role != "user") {
 
       fetchBackend();
     }
@@ -189,6 +189,7 @@ if(role=="admin"){
     setValue("");
     setCrimeDescription("");
     setIsAssignOpen(false);
+    setuserSpot(false)
   };
   const heatmapLayersCreated = useRef(false);
   const mapShowChange = (val: string) => {
@@ -205,7 +206,7 @@ if(role=="admin"){
         parseFloat(point.long)
       );
       minDistance = Math.min(minDistance, distance);
-      if (distance <= 50) {
+      if (distance <= 500) {
         setNearestDistance(distance);
         return true;
       }
@@ -268,8 +269,8 @@ if(role=="admin"){
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/navanihk/cm89q8a4k00es01safi2zeeju",
-      center: [78.17336378284944, 10.659130671537582],
-      zoom: 7,
+      center: [78.11593276260777, 9.92563911020649],
+      zoom:12,
       attributionControl: false,
       logoPosition: "bottom-right", // Set this to an invalid position to hide it
     });
@@ -298,6 +299,7 @@ if(role=="admin"){
     geolocateControl.on("geolocate", (e: any) => {
       const lng = e.coords.longitude;
       const lat = e.coords.latitude;
+
       setUserLocation({ lng, lat });
     });
     const geocoder = new MapboxGeocoder({
@@ -338,7 +340,7 @@ if(role=="admin"){
         //     await postRequest("/apifcc/crime/create", { crimeTypeId: 1, description: "testing1", lat: e.lngLat.lat, long: e.lngLat.lng, location: "karur" }, { Authorization: `Bearer ${token}` })
         // }
         // fetchBackend();
-        
+
         // alert("Marker")
         // Reset marker flag after placing marker
         // setMarker(false);
@@ -347,10 +349,10 @@ if(role=="admin"){
       if (markerEnabledRef.current && map.current) {
         // Create a new marker at the clicked location
         setuserSpot(true);
-       
+
         console.log("test");
         // Update state
-       
+
         setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
         // alert("Marker")
         // Reset marker flag after placing marker
@@ -361,7 +363,7 @@ if(role=="admin"){
 
     map.current.on("load", () => {
       if (!map.current) return;
-      map.current.loadImage("/camera.png", (error:any, image:any) => {
+      map.current.loadImage("/camera.png", (error: any, image: any) => {
         if (error) throw error;
         if (!image) return;
         if (map.current) {
@@ -372,6 +374,7 @@ if(role=="admin"){
         (position) => {
           const lng = position.coords.longitude;
           const lat = position.coords.latitude;
+          console.log(lng, lat);
           setUserLocation({ lng, lat });
 
           const near = checkProximityToHeatmap(lng, lat);
@@ -397,13 +400,13 @@ if(role=="admin"){
               setIsPoliceAssign(true);
               if (data.data.message == "unassigned") {
                 directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
-              
+
                 directions.setDestination([
                   data.data.location.long,
                   data.data.location.lat,
                 ]);
 
-                
+
               } else {
                 directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
                 console.log(data.data.crimes[0].crime.lat);
@@ -430,8 +433,7 @@ if(role=="admin"){
         },
         {
           enableHighAccuracy: false,
-          maximumAge: 30000, // Accept positions up to 30 seconds old
-          timeout: 10000, //
+
         }
       );
 
@@ -448,28 +450,47 @@ if(role=="admin"){
       // });
       // Add CCTV camera markers
       cctvMarkersRef.current = [];
+      let cctvIndex = 0
       cctvLocations.current.forEach((camera: any) => {
-        console.log();
+        cctvIndex = cctvIndex + 1;
         const markerElement = camera.isActive
           ? createCCTVMarker()
           : creatingCCTVMarker();
         if (map.current) {
           const marker = new mapboxgl.Marker({ element: markerElement })
             .setLngLat([parseFloat(camera.long), parseFloat(camera.lat)])
-            .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`))
+            .setPopup(
+              new mapboxgl.Popup({
+                className: 'text-black'
+              }).setHTML(`
+    <div class="text-black">
+     cctv ${cctvIndex}
+    </div>
+  `)
+            )
             .addTo(map.current);
           cctvMarkersRef.current.push(marker);
         }
       });
+      let policeindex = 0
       policeDataRef.current.forEach((camera: any) => {
+        console.log(camera)
         const markerElement = PoliceMarker();
+        policeindex = policeindex + 1
         if (map.current) {
           const marker = new mapboxgl.Marker({ element: markerElement })
             .setLngLat([
               parseFloat(camera.crime.long),
               parseFloat(camera.crime.lat),
-            ])
-            .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`))
+            ]).setPopup(
+              new mapboxgl.Popup({
+                className: 'text-black'
+              }).setHTML(`
+    <div class="text-black">
+     Police ${policeindex}
+    </div>
+  `)
+            )
             .addTo(map.current);
           cctvMarkersRef.current.push(marker);
         }
@@ -478,7 +499,15 @@ if(role=="admin"){
         const markerElement = createCustomMarker();
         const marker = new mapboxgl.Marker({ element: markerElement })
           .setLngLat([loc.lng, loc.lat])
-          .setPopup(new mapboxgl.Popup().setHTML(`<h3>${loc.popup}</h3>`));
+          .setPopup(
+            new mapboxgl.Popup({
+              className: 'text-black'
+            }).setHTML(`
+    <div class="text-black">
+      ${loc.popup}
+    </div>
+  `)
+          )
         if (mapShow === "all" || mapShow === "crime") {
           if (map.current) {
             marker.addTo(map.current);
@@ -591,17 +620,31 @@ if(role=="admin"){
   return (
     <div className="relative  w-full h-screen  ">
       {/* <div ref={geocoderContainerRef} className=""></div> */}
-      <div className="absolute bg-white items-center  flex justify-between z-50 h-10 text-black w-full px-1">
-        <div>Crimex</div>
-        <div className="!w-[400px] flex gap-2">
-          <SelectComponent
-            value={crimeType}
-            setValue={setCrimeType}
-            contents={crimes}
-          />
-          {role == "admin" && (
+      <div className="absolute bg-black py-2 items-center  grid grid-cols-3  z-50 h-15 text-black w-full px-1">
+        <div className="px-5 flex items-center gap-1">
+          <p className="text-3xl text-white">CRIME</p>
+          <p
+            style={{
+              textShadow:
+                "-1px -2px 3px black, 1px -1px 3px black, -1px 1px 3px black, 1px 1px 3px black",
+            }}
+            className="text-5xl text-red-700 font-bold drop-shadow-2xl"
+          >
+            X
+          </p>
+          {/* <p className="text-lg text-white">, welcome back {role}</p> */}
+        </div>
+        <div className=" flex gap-2 col-span-2  justify-end px-5">
+          <div className="w-[250px]">
+            <SelectComponent
+              value={crimeType}
+              setValue={setCrimeType}
+              contents={crimes}
+            />
+          </div>
+          {(role == "admin") && (
             <div className="flex gap-2">
-              <Button onPress={onOpen}>AI</Button>
+
               <Button onPress={() => setPredict(true)}>Predict</Button>
               <Button
                 onPress={() => {
@@ -613,6 +656,7 @@ if(role=="admin"){
               </Button>
             </div>
           )}
+          <Button onPress={onOpen}>AI</Button>
           {role == "user" && (
             <Button
               onPress={() => {
@@ -620,34 +664,37 @@ if(role=="admin"){
                 markerEnabledRef.current = true;
               }}
             >
-              mark the location
+              Mark the location
             </Button>
           )}
           {
-            role!="user"
-&&
-            <SelectComponent
-              value={mapShow}
-              setValue={mapShowChange}
-              contents={[
-                { key: "all", label: "all" },
-                { key: "cctv", label: "cctv" },
-                { key: "crime", label: "crime" },
-              ]}
-            />
+            role != "user"
+            &&
+            <div className="w-[250px]">
+              <SelectComponent
+                value={mapShow}
+                setValue={mapShowChange}
+                label="Select Filter Type"
+                contents={[
+                  { key: "all", label: "all" },
+                  { key: "cctv", label: "cctv" },
+                  { key: "crime", label: "crime" },
+                ]}
+              />
+            </div>
           }
-         
+
         </div>
       </div>
       <div ref={mapContainer} style={{ height: "100vh" }} />
 
       {/* Alert Modal */}
-      {showAlert && (
+      {role == "user" && showAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md">
+          <div className=" p-6 bg-black rounded-lg max-w-md">
             <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
-            <p className="mb-4">
-              You are currently within 50 meters of a heatmap area. Please be
+            <p className="mb-4 ">
+              You are currently within 500 meters of a high crime area. Please be
               aware of your surroundings.
             </p>
             <button
@@ -664,7 +711,7 @@ if(role=="admin"){
           <div className="bg-white p-6 rounded-lg max-w-md">
             <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
             <p className="mb-4">
-              You are currently within 50 meters of a heatmap area. Please be
+              You are currently within 500 meters of a high crime area. Please be
               aware of your surroundings.
             </p>
             <button
@@ -696,11 +743,10 @@ if(role=="admin"){
                           setIsAssignCCTV(!isAssignCCTV);
                           setIsAssignPolice(false);
                         }}
-                        className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md  ${
-                          isAssignCCTV
-                            ? "border-[#0266da] border-2"
-                            : "border-[#18181b] border-2"
-                        }   flex items-center justify-center `}
+                        className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md  ${isAssignCCTV
+                          ? "border-[#0266da] border-2"
+                          : "border-[#18181b] border-2"
+                          }   flex items-center justify-center `}
                       >
                         <GiCctvCamera size={30} />
                       </div>
@@ -712,11 +758,10 @@ if(role=="admin"){
                           setIsAssignPolice(!isAssignPolice);
                           setIsAssignCCTV(false);
                         }}
-                        className={`p-5 bg-[#3b3b42]  cursor-pointer ${
-                          isAssignPolice
-                            ? "border-[#0266da] border-2"
-                            : "border-[#18181b] border-2"
-                        } rounded-md  flex items-center justify-cente`}
+                        className={`p-5 bg-[#3b3b42]  cursor-pointer ${isAssignPolice
+                          ? "border-[#0266da] border-2"
+                          : "border-[#18181b] border-2"
+                          } rounded-md  flex items-center justify-cente`}
                       >
                         <RiPoliceBadgeFill size={30} />
                       </div>
@@ -741,6 +786,7 @@ if(role=="admin"){
                         <div className="w-60">
                           <SelectComponent
                             value={police}
+                            label="Select Police"
                             setValue={setPolice}
                             contents={[{ key: "1", label: "raj" }]}
                           />
@@ -751,7 +797,7 @@ if(role=="admin"){
                             isSelected={isCrime}
                             onValueChange={setIsCrime}
                           />{" "}
-                          Crime
+                        Patrol
                         </div>
                       </div>
                       <Textarea
@@ -802,8 +848,14 @@ if(role=="admin"){
                       .setLngLat([
                         setMarkerLocationRef.current.lng,
                         setMarkerLocationRef.current.lat,
-                      ])
-                      .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
+                      ]).setPopup(
+                        new mapboxgl.Popup({
+                          className: 'text-black'
+                        }).setHTML(`
+                              <div class="text-black">
+                                         cctv
+                                     </div>`)
+                      )
                     if (map.current) {
                       newMarker.addTo(map.current);
                     }
@@ -838,32 +890,32 @@ if(role=="admin"){
                   ];
                   console.log("poice", police);
                   const fetchBackend = async () => {
-                    // await postRequest(
-                    //   "/api/crime/create",
-                    //   {
-                    //     crimeTypeId: parseInt(value),
-                    //     description: crimeDescription,
-                    //     lat: setMarkerLocationRef.current.lat,
-                    //     long: setMarkerLocationRef.current.lng,
-                    //     location: "karur",
-                    //     isPatroll: true,
-                    //     loginId: parseInt(value),
-                    //     isCrime: isCrime,
-                    //   },
-                    //   { Authorization: `Bearer ${token}` }
-                    // );
                     await postRequest(
-                      "/api/crime/create/high",
+                      "/api/crime/create",
                       {
                         crimeTypeId: parseInt(value),
                         description: crimeDescription,
                         lat: setMarkerLocationRef.current.lat,
                         long: setMarkerLocationRef.current.lng,
-                        priority:4
-                        
+                        location: "karur",
+                        isPatroll: true,
+                        loginId: 2,
+                        isCrime: isCrime,
                       },
                       { Authorization: `Bearer ${token}` }
                     );
+                    // await postRequest(
+                    //   "/api/crime/create/high",
+                    //   {
+                    //     crimeTypeId: parseInt(value),
+                    //     description: crimeDescription,
+                    //     lat: setMarkerLocationRef.current.lat,
+                    //     long: setMarkerLocationRef.current.lng,
+                    //     priority:4
+
+                    //   },
+                    //   { Authorization: `Bearer ${token}` }
+                    // );
                   };
 
                   fetchBackend();
@@ -877,8 +929,15 @@ if(role=="admin"){
                     .setLngLat([
                       setMarkerLocationRef.current.lng,
                       setMarkerLocationRef.current.lat,
-                    ])
-                    .setPopup(new mapboxgl.Popup().setHTML(`<h3>cctv</h3>`));
+                    ]).setPopup(
+                      new mapboxgl.Popup({
+                        className: 'text-black'
+                      }).setHTML(`
+    <div class="text-black">
+     cctv
+    </div>
+  `)
+                    )
                   if (map.current) {
                     newMarker.addTo(map.current);
                   }
@@ -968,9 +1027,9 @@ if(role=="admin"){
                 const fetchBackend = async () => {
                   console.log("Fetch");
                   console.log(setMarkerLocationRef.current)
-                  if(
-                    setMarkerLocationRef.current?.lat 
-                  ){
+                  if (
+                    setMarkerLocationRef.current?.lat
+                  ) {
                     await postRequest(
                       "/api/crime/create",
                       {
@@ -980,7 +1039,7 @@ if(role=="admin"){
                         long: parseFloat(setMarkerLocationRef.current.lng),
                         location: "karur",
                         isCrime: true,
-                        isFake:false
+                        isFake: false
                       },
                       { Authorization: `Bearer ${token}` }
                     );
@@ -991,12 +1050,12 @@ if(role=="admin"){
 
                     marker.addTo(map.current);
                   }
-                
+
                 };
                 fetchBackend();
-                
-                // setuserSpot(false)
-              
+
+                setuserSpot(false)
+
               }}
             />
           </div>
@@ -1010,7 +1069,7 @@ if(role=="admin"){
         onClose={() => setPredict(false)}
         hideCloseButton
         ModalContents={
-          <Recommend map={map.current}/>
+          <Recommend map={map.current} />
         }
         bodyClassName="p-0"
         size="lg"
@@ -1027,19 +1086,19 @@ if(role=="admin"){
         </div>}
         modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
       />
-      
-      <Drawer isOpen={isOpen} size="xl" onOpenChange={onOpenChange}>
+
+      <Drawer isOpen={isOpen} size="lg" onOpenChange={onOpenChange}>
         <DrawerContent>
-          
-            <>
-              <DrawerHeader className="flex flex-col gap-1 text-2xl">ChatBot</DrawerHeader>
-              <DrawerBody className="bg-black p-0">
-                
-                <Chatbot />
-                
-              </DrawerBody>
-              
-            </>
+
+          <>
+            <DrawerHeader className="flex flex-col gap-1 text-2xl">ChatBot</DrawerHeader>
+            <DrawerBody className="bg-black p-0">
+
+              <Chatbot />
+
+            </DrawerBody>
+
+          </>
         </DrawerContent>
       </Drawer>
       {/* Status indicator */}
@@ -1051,15 +1110,14 @@ if(role=="admin"){
               <p className="text-xs">Lat: {userLocation.lat.toFixed(6)}</p>
               <p className="text-xs">Lng: {userLocation.lng.toFixed(6)}</p>
               <p
-                className={`text-xs font-bold ${
-                  isNearHeatmap ? "text-red-500" : "text-green-500"
-                }`}
+                className={`text-xs font-bold ${isNearHeatmap ? "text-red-500" : "text-green-500"
+                  }`}
               >
                 {isNearHeatmap
-                  ? `Within 50m of heatmap (${nearestDistance?.toFixed(1)}m)`
+                  ? `Within 500m of heatmap (${nearestDistance?.toFixed(1)}m)`
                   : nearestDistance
-                  ? `Outside heatmap area (${nearestDistance.toFixed(1)}m)`
-                  : "Outside heatmap area"}
+                    ? `Outside heatmap area (${nearestDistance.toFixed(1)}m)`
+                    : "Outside heatmap area"}
               </p>
             </div>
           ) : (

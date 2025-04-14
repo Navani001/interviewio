@@ -1,6 +1,7 @@
 export function createCCTVMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./camera.png")';
+    marker.style.color="#000000";
     marker.style.width = '30px';
     marker.style.height = '30px';
     marker.style.backgroundSize = 'cover';
@@ -10,6 +11,7 @@ export function creatingCCTVMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./broken.png")';
     marker.style.width = '30px';
+    marker.style.color="#000000";
     marker.style.height = '30px';
     marker.style.backgroundSize = 'cover';
     return marker;
@@ -17,6 +19,7 @@ export function creatingCCTVMarker() {
 export function PoliceMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./policeImage.png")';
+    marker.style.color="#000000";
     marker.style.width = '30px';
     marker.style.height = '30px';
     marker.style.backgroundSize = 'cover';
@@ -25,6 +28,7 @@ export function PoliceMarker() {
 export function SpotMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./spot.jpeg")';
+    marker.style.color="#000000";
     marker.style.width = '30px';
     marker.style.height = '30px';
     marker.style.backgroundSize = 'cover';
@@ -34,6 +38,7 @@ export function SpotMarker() {
 export function createCustomMarker() {
     const marker = document.createElement('div');
     marker.style.backgroundImage = 'url("./police.png")'; // Replace with your image URL
+    marker.style.color="#000000";
     marker.style.width = '25px';  // Adjust width
     marker.style.height = '25px'; // Adjust height
     marker.style.backgroundSize = 'cover';

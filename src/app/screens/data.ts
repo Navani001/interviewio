@@ -4,12 +4,12 @@ export const cctvLocations = [
 ];
     export const locations = [
     
-        { lat: 8.845984527202937, lng: 78.15552859024577, popup: "cctv3" },
-        { lat: 8.816130284467018, lng: 78.13767580739574, popup: "cctv3"  },
-        { lat: 8.822237030667546, lng: 78.18642763748622, popup: "cctv3"  },
-        { lat: 8.759129127634482, lng: 78.12256960652263, popup: "cctv3"  },
-        { lat: 9.031432134262941, lng: 78.0529592214414, popup: "cctv3"  },
-        { lat: 8.8550147670838, lng: 78.14155078095376, popup: "cctv3"  },
+        { lat: 9.977562865223831, lng:78.11505535515647, popup: "police station 5" },
+        { lat:  9.965489522580512, lng: 78.12510926583974, popup: "police station 4"  },
+        { lat:9.909805849975598, lng:  78.09324748928015, popup: "police station 3"  },
+        { lat:9.887677290835953 , lng: 78.11918528049705, popup: "police station 1"  },
+        { lat: 9.930361052139546, lng: 78.10891126713204 , popup: "police station 2"  },
+        { lat: 9.905799720719841 , lng:78.10562623014948 , popup: "police station 10"  },
         // { lng: 78.17336378284944, lat: 10.660000671537582, popup: "Los Angeles" },
         // { lng: 78.17336378284944, lat: 10.661000671537582, popup: "Chicago" },
     ];
