@@ -1,7 +1,7 @@
 
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { auth } from "../auth";
-
+console.log(process.env.NEXT_PUBLIC_BASE_URL )
 // Create an Axios instance
 const axiosClient = axios.create({
     baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/",// Replace with your API URL
