@@ -1,25 +1,16 @@
 "use client";
 
 // library imports
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
 
 export function SignIn() {
-    const searchParams = useSearchParams();
    
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [authenticated, setAuthenticated] = useState(false);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (authenticated) {
-            // Redirect to previous page or home page
-            const next = searchParams.get("next") || "/";
-            window.location.href = next;
-        }
-    }, [authenticated]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();

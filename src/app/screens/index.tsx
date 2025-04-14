@@ -1,236 +1,1131 @@
-"use client"
+"use client";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
+import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
+import { useEffect, useRef, useState } from "react";
+import {
+  ButtonComponent,
+  Chatbot,
+  ComonPopup,
+  Modals,
+  SelectComponent,
+} from "@/component";
+import { locations, crimes } from "./data";
+import { calculateDistance } from "@/component/map/mapUtils";
+import {
+  createCCTVMarker,
+  createCustomMarker,
+  creatingCCTVMarker,
+  PoliceMarker,
+  SpotMarker,
+} from "@/utils/marker/marker";
+import { Button, Checkbox, Drawer, DrawerBody, DrawerContent, DrawerHeader, Textarea, useDisclosure } from "@heroui/react";
+import { getRequest, postRequest } from "@/utils";
+import { GiCctvCamera } from "react-icons/gi";
+import { RiPoliceBadgeFill } from "react-icons/ri";
+import { Recommend } from "./component/recommend";
+mapboxgl.accessToken =
+  "pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ";
+const DISTANCE_THRESHOLD = 50;
 
-import React, { useRef, useEffect, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+export function MapBox({ role, token }: any) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<any>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [isPoliceAssign, setIsPoliceAssign] = useState(false);
+  const [markerLocation, setMarkerLocation] = useState<{
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [isCrime, setIsCrime] = useState(false);
+  const markerEnabledRef = useRef(false);
+  const [crimeSpotDescription, setCrimeSpotDescription] = useState("")
+  const markerAssignEnabledRef = useRef(false);
+  const [isNearHeatmap, setIsNearHeatmap] = useState(false);
+  const [nearestDistance, setNearestDistance] = useState<number | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [mapShow, setMapShow] = useState("all");
+  const geocoderContainerRef = useRef<any>(null);
+  const [model, setModel] = useState(false);
+  const [marker, setMarker] = useState(false);
+  const [assignMarker, setAssignMarker] = useState(false);
+  const alertShownRef = useRef(false);
+  const cctvLocations = useRef<any>([]);
+  const setMarkerLocationRef = useRef<any>({});
+  const cctvMarkersRef = useRef<any[]>([]);
+  const [crimeType, setCrimeType] = useState("");
+  const heatData = useRef<any>([]);
+  const crimeMarkersRef = useRef<any[]>([]);
+  const policeDataRef = useRef<any[]>([]);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [userSpot, setuserSpot] = useState(false);
+  const [isAssignCCTV, setIsAssignCCTV] = useState(false);
+  const [isAssignPolice, setIsAssignPolice] = useState(false);
+  const [value, setValue] = useState("");
+  const [police, setPolice] = useState("");
 
-mapboxgl.accessToken = 'pk.eyJ1IjoibmF2YW5paGsiLCJhIjoiY204MDIzOGxkMDZvZTJqczU2aGp5d3hneSJ9.i8pFygCwbKS6zYBv2_5ZCQ'
+  const [crimeDescription, setCrimeDescription] = useState("");
 
-export function MapBox() {
-    const mapContainer = useRef<HTMLDivElement>(null);
-    const map = useRef<mapboxgl.Map | null>(null);
-
-    useEffect(() => {
-        if (map.current) return;
-
-        if (!mapContainer.current) return;
-
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(position => {
-                console.log(position.coords.latitude, position.coords.longitude);
+  const [predict, setPredict] = useState(false);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
 
-            });
 
+  const updateHeatmapData = () => {
+    if (
+      !map.current ||
+      !map.current.isStyleLoaded() ||
+      !map.current.getSource("crimex")
+    ) {
+      console.log("Map or source not ready yet");
+      setTimeout(updateHeatmapData, 200); // Try again shortly
+      return;
+    }
+
+    console.log("Updating heatmap with", heatData.current.length, "points");
+
+    try {
+      const heatmapFeatures = heatData.current.map((point: any) => ({
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Point",
+          coordinates: [parseFloat(point.long), parseFloat(point.lat)],
+        },
+      }));
+
+      // Update the main heatmap source
+      map.current.getSource("crimex").setData({
+        type: "FeatureCollection",
+        features: heatmapFeatures,
+      });
+
+      // Update the buffer circles source
+      if (map.current.getSource("heatmap-buffers")) {
+        map.current.getSource("heatmap-buffers").setData({
+          type: "FeatureCollection",
+          features: heatmapFeatures,
+        });
+      }
+
+      console.log("Heatmap data updated successfully");
+    } catch (error) {
+      console.error("Error updating heatmap:", error);
+    }
+  };
+  useEffect(() => {
+    const fetchBackend = async () => {
+      try {
+        const payload: any = {};
+        if (crimeType !== "all") {
+          payload.crimeTypeId = parseInt(crimeType);
         }
-        // Initialize the map
-        map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/standard', // Changed to streets-v11 which definitely has waterway-label
-            center: [77.27752542755714, 11.494102635566897],
-            zoom: 3
-        });
-
-        map.current.addControl(
-            new mapboxgl.GeolocateControl({
-                positionOptions: {
-                    enableHighAccuracy: true
-                },
-                trackUserLocation: true,
-                showUserHeading: true
-            })
-        );
-
-
-        // Add the heatmap when the map is loaded
-        map.current.on('load', () => {
-            // Check if the map still exists
-            if (!map.current) return;
-            map.current.setConfigProperty('basemap', 'lightPreset', 'dusk');
-            // Add the earthquake data source
-
-            map.current.addSource('earthquakes', {
-                type: 'geojson',
-                data: {
-                    "type": "FeatureCollection",
-                    "features":
-                        [
-                            { "type": "Feature", "properties": { "id": "ak16994521", "mag": 2.3, "time": 1507425650893, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [10.942136, 78.082663] } },
-                            { "type": "Feature", "properties": { "id": "ak16994519", "mag": 1.7, "time": 1507425289659, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [78.082663, 10.942136] } },
-                            { "type": "Feature", "properties": { "id": "ak16994517", "mag": 1.6, "time": 1507424832518, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [12.60307000, 77.85193000, 105.5] } },
-                            { "type": "Feature", "properties": { "id": "ci38021336", "mag": 1.42, "time": 1507423898710, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [12.60307000, 77.85193000, 105.5] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2nn", "mag": 4.2, "time": 1507422626990, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-87.6901, 12.0623, 46.41] } },
-                            { "type": "Feature", "properties": { "id": "ak16994510", "mag": 1.6, "time": 1507422449194, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [78.082663, 10.942136] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2nb", "mag": 4.6, "time": 1507420784440, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-178.4576, -20.2873, 614.26] } },
-                            { "type": "Feature", "properties": { "id": "ak16994298", "mag": 2.4, "time": 1507419370097, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-148.789, 63.1725, 7.5] } },
-                            { "type": "Feature", "properties": { "id": "nc72905861", "mag": 1.39, "time": 1507418785100, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-120.993164, 36.421833, 6.37] } },
-                            { "type": "Feature", "properties": { "id": "ci38021304", "mag": 1.11, "time": 1507418426010, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-117.0155, 33.656333, 12.37] } },
-                            { "type": "Feature", "properties": { "id": "ak16994293", "mag": 1.5, "time": 1507417256497, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [77.27751247984386, 11.494112450605481] } },
-                            { "type": "Feature", "properties": { "id": "ak16994287", "mag": 2.0, "time": 1507413903714, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.4378, 63.0933, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "ak16994285", "mag": 1.5, "time": 1507413670029, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-149.6538, 63.2272, 96.8] } },
-                            { "type": "Feature", "properties": { "id": "ak16994283", "mag": 1.4, "time": 1507413587442, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [77.27751247984386, 11.494112450605481] } },
-                            { "type": "Feature", "properties": { "id": "ak16994280", "mag": 1.3, "time": 1507413266231, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [77.27751247984386, 11.494112450605481] } },
-                            { "type": "Feature", "properties": { "id": "ak16994278", "mag": 1.8, "time": 1507413195076, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-150.8597, 61.6214, 50.0] } },
-                            { "type": "Feature", "properties": { "id": "ak16993960", "mag": 1.4, "time": 1507405129739, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-147.3106, 61.5726, 26.9] } },
-                            { "type": "Feature", "properties": { "id": "ak16993952", "mag": 1.7, "time": 1507403679922, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-150.5846, 60.2607, 34.2] } },
-                            { "type": "Feature", "properties": { "id": "ci38021224", "mag": 1.04, "time": 1507401391710, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-116.929, 34.254833, 18.27] } },
-                            { "type": "Feature", "properties": { "id": "ak16993752", "mag": 1.3, "time": 1507401212982, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.5065, 63.0847, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "ak16993746", "mag": 1.3, "time": 1507399350671, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-147.8929, 63.5257, 3.3] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2jk", "mag": 4.6, "time": 1507398878400, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-175.7258, -18.9821, 195.22] } },
-                            { "type": "Feature", "properties": { "id": "ak16993741", "mag": 1.6, "time": 1507398797233, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.3473, 63.0775, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "nc72905766", "mag": 2.64, "time": 1507397278960, "felt": 4, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-121.137497, 36.579834, 7.72] } },
-                            { "type": "Feature", "properties": { "id": "ak16993738", "mag": 1.4, "time": 1507396778206, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.1075, 61.8312, 71.7] } },
-                            { "type": "Feature", "properties": { "id": "ak16993736", "mag": 1.2, "time": 1507396542471, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.3769, 63.0621, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2ii", "mag": 4.3, "time": 1507395765330, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-94.8319, 16.7195, 58.84] } },
-                            { "type": "Feature", "properties": { "id": "uw61339006", "mag": 1.91, "time": 1507395622730, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-120.689833, 47.049167, 5.38] } },
-                            { "type": "Feature", "properties": { "id": "ak16993732", "mag": 1.7, "time": 1507395602456, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.5283, 63.0785, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "ak16993720", "mag": 2.5, "time": 1507394741482, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-151.6683, 60.7696, 67.1] } },
-                            { "type": "Feature", "properties": { "id": "ci38021048", "mag": 1.02, "time": 1507388708760, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-117.225, 34.0335, 0.39] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2cx", "mag": 4.9, "time": 1507343887900, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [69.1471, -23.7671, 10.0] } },
-                            { "type": "Feature", "properties": { "id": "nc72905496", "mag": 1.94, "time": 1507341324260, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-121.101166, 40.842499, 6.01] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2cc", "mag": 5.0, "time": 1507340745260, "felt": null, "tsunami": 1 }, "geometry": { "type": "Point", "coordinates": [132.668, 1.1151, 7.01] } },
-                            { "type": "Feature", "properties": { "id": "ci38020800", "mag": 1.46, "time": 1507340726000, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-116.462667, 33.466333, 5.78] } },
-                            { "type": "Feature", "properties": { "id": "ak16991706", "mag": 1.7, "time": 1507339655320, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-141.2596, 60.2328, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "ak16991711", "mag": 1.6, "time": 1507339653625, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-141.2013, 60.2021, 10.5] } },
-                            { "type": "Feature", "properties": { "id": "ak16991704", "mag": 1.7, "time": 1507338343941, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-149.7575, 62.4396, 50.8] } },
-                            { "type": "Feature", "properties": { "id": "us2000b2av", "mag": 4.3, "time": 1507329021540, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [138.9649, 43.0121, 217.94] } },
-                            { "type": "Feature", "properties": { "id": "nn00608329", "mag": 1.3, "time": 1507328136999, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-117.1198, 37.3861, 8.7] } },
-                            { "type": "Feature", "properties": { "id": "ci38020720", "mag": 1.45, "time": 1507327306610, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-116.955667, 34.34, -0.29] } },
-                            { "type": "Feature", "properties": { "id": "uw61338531", "mag": 1.37, "time": 1507326914640, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-122.991667, 46.572333, -0.3] } },
-                            { "type": "Feature", "properties": { "id": "us2000b27a", "mag": 2.4, "time": 1507317641850, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-98.2269, 36.6265, 5.07] } },
-                            { "type": "Feature", "properties": { "id": "ak16991058", "mag": 2.6, "time": 1507317554328, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-146.3172, 63.6837, 3.7] } },
-                            { "type": "Feature", "properties": { "id": "ci38020656", "mag": 1.03, "time": 1507317548410, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-117.646667, 36.148333, 0.93] } },
-                            { "type": "Feature", "properties": { "id": "ci38020648", "mag": 1.08, "time": 1507317476900, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-118.1915, 35.0025, -0.87] } },
-                            { "type": "Feature", "properties": { "id": "nc72905416", "mag": 1.19, "time": 1507317386760, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-118.803333, 37.457667, -0.31] } },
-                            { "type": "Feature", "properties": { "id": "uw61338426", "mag": 1.65, "time": 1507316609360, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-121.7105, 43.553333, 7.02] } },
-                            { "type": "Feature", "properties": { "id": "mb80259489", "mag": 1.66, "time": 1507316359200, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-112.477167, 45.9945, -2.0] } },
-                            { "type": "Feature", "properties": { "id": "ci38020624", "mag": 1.22, "time": 1507316271630, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-116.362, 32.941333, 10.15] } },
-                            { "type": "Feature", "properties": { "id": "ak16991011", "mag": 2.0, "time": 1507315584886, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-148.9279, 62.7834, 4.5] } },
-                            { "type": "Feature", "properties": { "id": "us2000b26p", "mag": 4.7, "time": 1507315424010, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [68.9568, -49.2119, 13.54] } },
-                            { "type": "Feature", "properties": { "id": "uu60251447", "mag": 2.18, "time": 1507314096180, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-111.457, 42.633167, 4.91] } },
-                            { "type": "Feature", "properties": { "id": "nc72905411", "mag": 1.24, "time": 1507313481610, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-121.962333, 37.920333, -0.33] } },
-                            { "type": "Feature", "properties": { "id": "us2000b260", "mag": 4.4, "time": 1507311862190, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [86.7487, 30.0165, 10.0] } },
-                            { "type": "Feature", "properties": { "id": "ci38020552", "mag": 1.28, "time": 1507311788210, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-118.351667, 35.052833, -1.01] } },
-                            { "type": "Feature", "properties": { "id": "us2000b20f", "mag": 5.4, "time": 1507301800580, "felt": 169, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [141.1969, 37.0997, 47.42] } },
-                            { "type": "Feature", "properties": { "id": "ak16990465", "mag": 1.7, "time": 1507301707708, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-156.519, 67.5663, 0.0] } },
-                            { "type": "Feature", "properties": { "id": "ci38020392", "mag": 2.6, "time": 1507301676460, "felt": 1, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-115.894167, 31.614, 5.89] } },
-                            { "type": "Feature", "properties": { "id": "ak16990463", "mag": 1.6, "time": 1507300956103, "felt": null, "tsunami": 0 }, "geometry": { "type": "Point", "coordinates": [-152.1925, 59.8037, 20.0] } },
-                        ]
-                }
-            });
-
-            // Try to find a good insertion point in the map style
-            const firstSymbolId = getFirstSymbolLayerId(map.current);
-            // new mapboxgl.Marker().setLngLat([ 78.082663,10.942136]).addTo(map.current);
-
-            // Add the heatmap layer
-            map.current.addLayer(
-                {
-                    id: 'earthquakes-heat',
-                    type: 'heatmap',
-                    source: 'earthquakes',
-                    maxzoom: 20,
-                    paint: {
-                        'heatmap-weight': [
-                            'interpolate',
-                            ['linear'],
-                            ['get', 'mag'],
-                            0, 0,
-                            6, 1
-                        ],
-                        'heatmap-intensity': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            0, 1,
-                            9, 3
-                        ],
-                        "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(0, 0, 255, 0)", 0.1, "#ffffb2", 0.3, "#feb24c", 0.5, "#fd8d3c", 0.7, "#fc4e2a", 1, "#e31a1c"],
-                        'heatmap-radius': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            0, 2,
-                            9, 20
-                        ],
-                        'heatmap-opacity': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            7, 1,
-                            9, 0
-                        ]
-                    }
-                },
-                firstSymbolId // Insert before the first symbol layer
-            );
-
-            // Add the point layer
-            map.current.addLayer(
-                {
-                    id: 'earthquakes-point',
-                    type: 'circle',
-                    source: 'earthquakes',
-                    minzoom: 7,
-                    paint: {
-                        'circle-radius': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            7, ['interpolate', ['linear'], ['get', 'mag'], 1, 1, 6, 4],
-                            16, ['interpolate', ['linear'], ['get', 'mag'], 1, 5, 6, 50]
-                        ],
-                        'circle-color': [
-                            'interpolate',
-                            ['linear'],
-                            ['get', 'mag'],
-                            1, 'rgb(255,255,255)',     // Transparent green
-                            2, 'rgb(255,255,255)', // Light green
-                            3, 'rgb(255,255,255)',    // Yellow
-                            4, 'rgb(255,255,255)',    // Orange
-                            5, 'rgb(255,255,255)',     // Orange-red
-                            6, 'rgb(255,255,255)'
-                        ],
-                        'circle-stroke-color': 'white',
-                        'circle-stroke-width': 1,
-                        'circle-opacity': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            7, 0,
-                            8, 1
-                        ]
-                    }
-                },
-                firstSymbolId // Insert before the first symbol layer
-            );
-        });
-        // new mapboxgl.Marker().setLngLat([-147.8929, 63.5257]).addTo(mapContainer);
-
-        // Helper function to find the first symbol layer
-        function getFirstSymbolLayerId(map: any) {
-            if (map) {
-
-                const layers = map.getStyle().layers;
-                for (let i = 0; i < layers.length; i++) {
-                    if (layers[i].type === 'symbol') {
-                        return layers[i].id;
-                    }
-                }
-            }
-            // Find the index of the first symbol layer in the map style
-
-            return undefined;
+        if (role == "user") {
+          // const data: any = await postRequest("/api/crime/high", payload, {
+          //   Authorization: `Bearer ${token}`,
+          // });
+          const data: any = await getRequest("/api/crime/high");
+          heatData.current = [...data.data];
+        } else {
+          const data: any = await postRequest("/api/crime", payload, {
+            Authorization: `Bearer ${token}`,
+          });
+          heatData.current = [...data.data];
         }
 
-        // Cleanup on unmount
-        return () => {
-            if (map.current) {
-                map.current.remove();
-                map.current = null;
-            }
-        };
-    }, []);
+        // Update heatData.current with new data
 
-    return <div ref={mapContainer} style={{ height: '100vh' }} />;
+        // Explicitly call updateHeatmapData to refresh the visualization
+        updateHeatmapData();
+      } catch (error) {
+        console.error("Error fetching crime data:", error);
+      }
+    };
+
+    fetchBackend();
+  }, [crimeType]);
+  useEffect(() => {
+    const fetchBackend = async () => {
+      try {
+        const data: any = await getRequest("/api/cctv");
+
+        console.log("Fetched cctv data:", data.data);
+        cctvLocations.current = data.data;
+      } catch (error) {
+        console.error("Error fetching crime data:", error);
+      }
+    };
+    if (role == "admin") {
+      fetchBackend();
+    }
+  }, []);
+  useEffect(() => {
+    const fetchBackend = async () => {
+      try {
+        const data: any = await getRequest("/api/crime/policeLocation");
+
+        console.log("Fetched cctv data:", data.data);
+        policeDataRef.current = data.data;
+      } catch (error) {
+        console.error("Error fetching crime data:", error);
+      }
+    };
+    if (role != "user") {
+
+      fetchBackend();
+    }
+  }, []);
+  useEffect(() => {
+    console.log(heatData.current);
+  }, [heatData.current]);
+  const handeleAssignCreate = () => {
+    setIsAssignCCTV(false);
+    setIsAssignPolice(false);
+    setValue("");
+    setCrimeDescription("");
+    setIsAssignOpen(false);
+    setuserSpot(false)
+  };
+  const heatmapLayersCreated = useRef(false);
+  const mapShowChange = (val: string) => {
+    setMapShow(val);
+  };
+  const checkProximityToHeatmap = (lng: number, lat: number) => {
+    let minDistance = Number.MAX_VALUE;
+    for (const point of heatData.current) {
+      console.log(point);
+      const distance = calculateDistance(
+        lat,
+        lng,
+        parseFloat(point.lat),
+        parseFloat(point.long)
+      );
+      minDistance = Math.min(minDistance, distance);
+      if (distance <= 500) {
+        setNearestDistance(distance);
+        return true;
+      }
+    }
+    setNearestDistance(minDistance);
+    return false;
+  };
+
+  useEffect(() => {
+    if (!map.current || !heatmapLayersCreated.current) return;
+    console.log("changer");
+    // Handle crime heatmap layers visibility
+    if (map.current.getLayer("dynamic-heatmap")) {
+      map.current.setLayoutProperty(
+        "dynamic-heatmap",
+        "visibility",
+        mapShow === "all" || mapShow === "crime" ? "visible" : "none"
+      );
+    }
+    if (map.current.getLayer("heatmap-buffer-circles")) {
+      map.current.setLayoutProperty(
+        "heatmap-buffer-circles",
+        "visibility",
+        mapShow === "all" || mapShow === "crime" ? "visible" : "none"
+      );
+    }
+    // Handle CCTV markers visibility
+    cctvMarkersRef.current.forEach((marker) => {
+      if (mapShow === "all" || mapShow === "cctv") {
+        marker.addTo(map.current);
+      } else {
+        marker.remove();
+      }
+    });
+
+    console.log(crimeMarkersRef);
+
+    // Handle crime location markers visibility
+
+    crimeMarkersRef.current.forEach((marker) => {
+      if (mapShow === "all" || mapShow === "crime") {
+        marker.addTo(map.current);
+      } else {
+        marker.remove();
+      }
+    });
+  }, [mapShow]);
+
+  useEffect(() => {
+    // Call updateHeatmapData whenever heatmapLayersCreated changes to true
+    if (heatmapLayersCreated.current && map.current) {
+      console.log("Layers created, updating heatmap data");
+      updateHeatmapData();
+    }
+  }, [heatmapLayersCreated.current]);
+  useEffect(() => {
+    if (map.current || !mapContainer.current) return;
+    const MapboxDirections = require("@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions");
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/navanihk/cm89q8a4k00es01safi2zeeju",
+      center: [78.11593276260777, 9.92563911020649],
+      zoom:12,
+      attributionControl: false,
+      logoPosition: "bottom-right", // Set this to an invalid position to hide it
+    });
+    // Add geolocation controal
+    const geolocateControl = new mapboxgl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+
+      showUserHeading: true,
+    });
+    map.current.addControl(geolocateControl, "bottom-right");
+    const directions = new MapboxDirections({
+      accessToken: mapboxgl.accessToken,
+      unit: "metric",
+      profile: "mapbox/driving",
+      alternatives: true,
+      congestion: true,
+      routePadding: 50,
+      // voice_instructions:true,
+      // instructions: false,
+      steps: true,
+      interactive: false,
+    });
+
+    map.current.addControl(directions, "bottom-left");
+    geolocateControl.on("geolocate", (e: any) => {
+      const lng = e.coords.longitude;
+      const lat = e.coords.latitude;
+
+      setUserLocation({ lng, lat });
+    });
+    const geocoder = new MapboxGeocoder({
+      accessToken: mapboxgl.accessToken || "",
+      mapboxgl: mapboxgl as any,
+    });
+
+    if (geocoderContainerRef.current) {
+      geocoderContainerRef.current.appendChild(geocoder.onAdd(map.current));
+    }
+    // Also check regularly for position updates (every 10 seconds)
+
+    // Add markers with popups
+
+    map.current.on("click", (e: any) => {
+      console.log(`Latitude: ${e.lngLat.lat}, Longitude: ${e.lngLat.lng}`);
+      console.log("Marker enabled:", markerAssignEnabledRef.current);
+      setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+      setMarkerLocationRef.current = { lng: e.lngLat.lng, lat: e.lngLat.lat };
+      if (markerAssignEnabledRef.current && map.current) {
+        // Create a new marker at the clicked location
+        // new mapboxgl.Marker()
+        //   .setLngLat([e.lngLat.lng, e.lngLat.lat])
+        //   .setPopup(
+        //     new mapboxgl.Popup().setHTML(
+        //       `<h3>Custom Marker</h3><p>Lat: ${e.lngLat.lat.toFixed(
+        //         6
+        //       )}, Lng: ${e.lngLat.lng.toFixed(6)}</p>`
+        //     )
+        //   )
+        //   .addTo(map.current);
+        console.log("test");
+        // alert("assign marker")
+        setIsAssignOpen(true);
+        // Update state
+        // const fetchBackend=async ()=>{
+        //     console.log('Fetch')
+        //     await postRequest("/apifcc/crime/create", { crimeTypeId: 1, description: "testing1", lat: e.lngLat.lat, long: e.lngLat.lng, location: "karur" }, { Authorization: `Bearer ${token}` })
+        // }
+        // fetchBackend();
+
+        // alert("Marker")
+        // Reset marker flag after placing marker
+        // setMarker(false);
+        markerEnabledRef.current = false;
+      }
+      if (markerEnabledRef.current && map.current) {
+        // Create a new marker at the clicked location
+        setuserSpot(true);
+
+        console.log("test");
+        // Update state
+
+        setMarkerLocation({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+        // alert("Marker")
+        // Reset marker flag after placing marker
+        setMarker(false);
+        markerEnabledRef.current = false;
+      }
+    });
+
+    map.current.on("load", () => {
+      if (!map.current) return;
+      map.current.loadImage("/camera.png", (error: any, image: any) => {
+        if (error) throw error;
+        if (!image) return;
+        if (map.current) {
+          map.current.addImage("camera", image);
+        }
+      });
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lng = position.coords.longitude;
+          const lat = position.coords.latitude;
+          console.log(lng, lat);
+          setUserLocation({ lng, lat });
+
+          const near = checkProximityToHeatmap(lng, lat);
+          if (role === "user") {
+            const near = checkProximityToHeatmap(lng, lat);
+            setIsNearHeatmap(near);
+
+            if (near && !alertShownRef.current) {
+              setShowAlert(true);
+              alertShownRef.current = true;
+            }
+          } else if (role === "police") {
+            const fetchBackendData = async () => {
+              const data: any = await postRequest(
+                "/api/crime/spotPolice",
+                { lat: lat, long: lng },
+                { Authorization: `Bearer ${token}` }
+              );
+              console.log(data);
+              if (data.data.message == "No") {
+                return;
+              }
+              setIsPoliceAssign(true);
+              if (data.data.message == "unassigned") {
+                directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
+
+                directions.setDestination([
+                  data.data.location.long,
+                  data.data.location.lat,
+                ]);
+
+
+              } else {
+                directions.setOrigin([lng, lat]); // can be address in form setOrigin("12, Elm Street, NY")
+                console.log(data.data.crimes[0].crime.lat);
+                directions.setDestination([
+                  data.data.crimes[0].crime.long,
+                  data.data.crimes[0].crime.lat,
+                ]);
+                setCrimeSpotDescription(data.data.crimes[0].crime.description)
+              }
+            };
+            fetchBackendData();
+          }
+          // If user wasn't near before but is now, show alert
+          if (near && !isNearHeatmap && !alertShownRef.current) {
+            setIsNearHeatmap(true);
+            setShowAlert(true);
+            alertShownRef.current = true;
+          } else if (near !== isNearHeatmap) {
+            setIsNearHeatmap(near);
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        },
+        {
+          enableHighAccuracy: false,
+
+        }
+      );
+
+      // map.current.addLayer({
+      //     id: 'cctv2',
+      //     type: 'symbol',
+      //     "layout": {
+      //         "icon-image": "camera",
+      //         'icon-size': 0.06,
+
+      //     },
+      //     source: 'cctv',
+
+      // });
+      // Add CCTV camera markers
+      cctvMarkersRef.current = [];
+      let cctvIndex = 0
+      cctvLocations.current.forEach((camera: any) => {
+        cctvIndex = cctvIndex + 1;
+        const markerElement = camera.isActive
+          ? createCCTVMarker()
+          : creatingCCTVMarker();
+        if (map.current) {
+          const marker = new mapboxgl.Marker({ element: markerElement })
+            .setLngLat([parseFloat(camera.long), parseFloat(camera.lat)])
+            .setPopup(
+              new mapboxgl.Popup({
+                className: 'text-black'
+              }).setHTML(`
+    <div class="text-black">
+     cctv ${cctvIndex}
+    </div>
+  `)
+            )
+            .addTo(map.current);
+          cctvMarkersRef.current.push(marker);
+        }
+      });
+      let policeindex = 0
+      policeDataRef.current.forEach((camera: any) => {
+        console.log(camera)
+        const markerElement = PoliceMarker();
+        policeindex = policeindex + 1
+        if (map.current) {
+          const marker = new mapboxgl.Marker({ element: markerElement })
+            .setLngLat([
+              parseFloat(camera.crime.long),
+              parseFloat(camera.crime.lat),
+            ]).setPopup(
+              new mapboxgl.Popup({
+                className: 'text-black'
+              }).setHTML(`
+    <div class="text-black">
+     Police ${policeindex}
+    </div>
+  `)
+            )
+            .addTo(map.current);
+          cctvMarkersRef.current.push(marker);
+        }
+      });
+      locations.forEach((loc) => {
+        const markerElement = createCustomMarker();
+        const marker = new mapboxgl.Marker({ element: markerElement })
+          .setLngLat([loc.lng, loc.lat])
+          .setPopup(
+            new mapboxgl.Popup({
+              className: 'text-black'
+            }).setHTML(`
+    <div class="text-black">
+      ${loc.popup}
+    </div>
+  `)
+          )
+        if (mapShow === "all" || mapShow === "crime") {
+          if (map.current) {
+            marker.addTo(map.current);
+          }
+        }
+      });
+
+      const heatmapFeatures: any = heatData.current.map((point: any) => ({
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Point",
+          coordinates: [parseFloat(point.long), parseFloat(point.lat)],
+        },
+      }));
+
+      map.current.addSource("crimex", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: heatmapFeatures,
+        },
+      });
+
+      map.current.addLayer({
+        id: "dynamic-heatmap",
+        type: "heatmap",
+        source: "crimex",
+        paint: {
+          "heatmap-weight": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0,0,255,0)",
+            0.2,
+            "rgba(0,0,255,0.5)",
+            0.4,
+            "rgba(0,255,255,0.7)",
+            0.6,
+            "rgba(0,255,0,0.7)",
+            0.8,
+            "rgba(255,255,0,0.8)",
+            1,
+            "rgba(255,0,0,1)",
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
+          "heatmap-opacity": 0.8,
+        },
+        layout: {
+          visibility:
+            mapShow === "all" || mapShow === "crime" ? "visible" : "none",
+        },
+      });
+      const bufferSource: any = {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: heatData.current.map((point: any) => ({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "Point",
+              coordinates: [parseFloat(point.long), parseFloat(point.lat)],
+            },
+          })),
+        },
+      };
+
+      map.current.addSource("heatmap-buffers", bufferSource);
+
+      map.current.addLayer({
+        id: "heatmap-buffer-circles",
+        type: "circle",
+        source: "heatmap-buffers",
+        layout: {
+          visibility:
+            mapShow === "all" || mapShow === "crime" ? "visible" : "none",
+        },
+        paint: {
+          "circle-radius": {
+            stops: [
+              [0, 0],
+              [20, 50], // At zoom level 20, circle radius will be 50 pixels (approx 50m)
+            ],
+            base: 2,
+          },
+          "circle-color": "rgba(255, 0, 0, 0.1)",
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "rgba(255, 0, 0, 0.3)",
+        },
+      });
+      heatmapLayersCreated.current = true;
+    });
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
+  // Close alert modal
+  const closeAlert = () => {
+    setShowAlert(false);
+  };
+
+  return (
+    <div className="relative  w-full h-screen  ">
+      {/* <div ref={geocoderContainerRef} className=""></div> */}
+      <div className="absolute bg-black py-2 items-center  grid grid-cols-3  z-50 h-15 text-black w-full px-1">
+        <div className="px-5 flex items-center gap-1">
+          <p className="text-3xl text-white">CRIME</p>
+          <p
+            style={{
+              textShadow:
+                "-1px -2px 3px black, 1px -1px 3px black, -1px 1px 3px black, 1px 1px 3px black",
+            }}
+            className="text-5xl text-red-700 font-bold drop-shadow-2xl"
+          >
+            X
+          </p>
+          {/* <p className="text-lg text-white">, welcome back {role}</p> */}
+        </div>
+        <div className=" flex gap-2 col-span-2  justify-end px-5">
+          <div className="w-[250px]">
+            <SelectComponent
+              value={crimeType}
+              setValue={setCrimeType}
+              contents={crimes}
+            />
+          </div>
+          {(role == "admin") && (
+            <div className="flex gap-2">
+
+              <Button onPress={() => setPredict(true)}>Predict</Button>
+              <Button
+                onPress={() => {
+                  setAssignMarker(true);
+                  markerAssignEnabledRef.current = true;
+                }}
+              >
+                Assign
+              </Button>
+            </div>
+          )}
+          <Button onPress={onOpen}>AI</Button>
+          {role == "user" && (
+            <Button
+              onPress={() => {
+                setMarker(true);
+                markerEnabledRef.current = true;
+              }}
+            >
+              Mark the location
+            </Button>
+          )}
+          {
+            role != "user"
+            &&
+            <div className="w-[250px]">
+              <SelectComponent
+                value={mapShow}
+                setValue={mapShowChange}
+                label="Select Filter Type"
+                contents={[
+                  { key: "all", label: "all" },
+                  { key: "cctv", label: "cctv" },
+                  { key: "crime", label: "crime" },
+                ]}
+              />
+            </div>
+          }
+
+        </div>
+      </div>
+      <div ref={mapContainer} style={{ height: "100vh" }} />
+
+      {/* Alert Modal */}
+      {role == "user" && showAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className=" p-6 bg-black rounded-lg max-w-md">
+            <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
+            <p className="mb-4 ">
+              You are currently within 500 meters of a high crime area. Please be
+              aware of your surroundings.
+            </p>
+            <button
+              onClick={closeAlert}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              I understand
+            </button>
+          </div>
+        </div>
+      )}
+      {role == "user" && model && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md">
+            <h2 className="text-xl font-bold mb-4">Proximity Alert!</h2>
+            <p className="mb-4">
+              You are currently within 500 meters of a high crime area. Please be
+              aware of your surroundings.
+            </p>
+            <button
+              onClick={closeAlert}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              I understand
+            </button>
+          </div>
+        </div>
+      )}
+      <Modals
+        isopen={isAssignOpen}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="">
+            <ComonPopup
+              //   icon={<FeaturedTickIcon />}
+              bodyContent={
+                <div>
+                  <p className="font-semibold text-2xl text-center  text-content2-100 pb-10">
+                    ASSIGN
+                  </p>
+                  <div className="flex justify-around">
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        onClick={() => {
+                          setIsAssignCCTV(!isAssignCCTV);
+                          setIsAssignPolice(false);
+                        }}
+                        className={`p-5 bg-[#3b3b42] cursor-pointer rounded-md  ${isAssignCCTV
+                          ? "border-[#0266da] border-2"
+                          : "border-[#18181b] border-2"
+                          }   flex items-center justify-center `}
+                      >
+                        <GiCctvCamera size={30} />
+                      </div>
+                      <p>CCTV</p>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        onClick={() => {
+                          setIsAssignPolice(!isAssignPolice);
+                          setIsAssignCCTV(false);
+                        }}
+                        className={`p-5 bg-[#3b3b42]  cursor-pointer ${isAssignPolice
+                          ? "border-[#0266da] border-2"
+                          : "border-[#18181b] border-2"
+                          } rounded-md  flex items-center justify-cente`}
+                      >
+                        <RiPoliceBadgeFill size={30} />
+                      </div>
+                      <p>Police</p>
+                    </div>
+                  </div>
+                  {isAssignPolice && (
+                    <div className="pt-6 px-4 gap-5 flex flex-col items-center">
+                      {/* <Select onChange={handleSelectionChange}  size="sm" className="max-w-xs" label="Select Crime type">
+                        {crimes.map((crime) => (
+                          <SelectItem key={crime.key}>
+                            {crime.label}
+                          </SelectItem>
+                        ))}
+                      </Select> */}
+                      <SelectComponent
+                        value={value}
+                        setValue={setValue}
+                        contents={crimes}
+                      />
+                      <div className="flex gap-2 justify-between">
+                        <div className="w-60">
+                          <SelectComponent
+                            value={police}
+                            label="Select Police"
+                            setValue={setPolice}
+                            contents={[{ key: "1", label: "raj" }]}
+                          />
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          {" "}
+                          <Checkbox
+                            isSelected={isCrime}
+                            onValueChange={setIsCrime}
+                          />{" "}
+                        Patrol
+                        </div>
+                      </div>
+                      <Textarea
+                        label="Description"
+                        value={crimeDescription}
+                        onValueChange={setCrimeDescription}
+                        placeholder="Enter your description"
+                      />
+                    </div>
+                  )}
+                </div>
+              }
+              button1Text="Cancel"
+              button2Text="Assign"
+              Button1Variant="bordered"
+              Button2Variant="bordered"
+              button1Bgcolor="bg-transparent"
+              Button1BaseClassName="border border-secondary-700 bg-transparent"
+              Button1textClassName="text-secondary-1001"
+              Button2textClassName="text-secondary-1001"
+              onButton1Click={() => setIsAssignOpen(false)}
+              onButton2Click={() => {
+                console.log("Assigning...");
+                if (isAssignCCTV) {
+                  console.log("cctv assignment");
+                  const fetchBackend = async () => {
+                    const response = await postRequest(
+                      "/api/cctv/create",
+                      {
+                        name: "cctv for test",
+                        lat: setMarkerLocationRef.current.lat,
+                        long: setMarkerLocationRef.current.lng,
+                        location: "karur",
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                    const newCCTV = {
+                      name: "cctv for test",
+                      lat: setMarkerLocationRef.current.lat + "",
+                      long: setMarkerLocationRef.current.lng + "",
+                      location: "karur",
+                    };
+                    markerAssignEnabledRef.current = false;
+                    const markerElement = creatingCCTVMarker();
+                    const newMarker = new mapboxgl.Marker({
+                      element: markerElement,
+                    })
+                      .setLngLat([
+                        setMarkerLocationRef.current.lng,
+                        setMarkerLocationRef.current.lat,
+                      ]).setPopup(
+                        new mapboxgl.Popup({
+                          className: 'text-black'
+                        }).setHTML(`
+                              <div class="text-black">
+                                         cctv
+                                     </div>`)
+                      )
+                    if (map.current) {
+                      newMarker.addTo(map.current);
+                    }
+
+                    // After successful API call, add the new CCTV to the map
+                    // if (response && map.current) {
+                    //     // Add to local CCTV locations array
+
+                    //     cctvLocations.current.push(newCCTV);
+
+                    //     // Create a new marker for this CCTV
+
+                    //     // Only add to map if the current view allows it
+                    //     if (mapShow === "all" || mapShow === "cctv") {
+                    //     }
+
+                    //     // Add to the markers reference array
+                    //     // cctvMarkersRef.current.push(newMarker);
+                    // }
+                  };
+
+                  fetchBackend();
+                } else {
+                  // Add new data point to heatData.current
+                  heatData.current = [
+                    ...heatData.current,
+                    {
+                      crimeTypeId: parseInt(value),
+                      lat: setMarkerLocationRef.current.lat + "",
+                      long: setMarkerLocationRef.current.lng + "",
+                    },
+                  ];
+                  console.log("poice", police);
+                  const fetchBackend = async () => {
+                    await postRequest(
+                      "/api/crime/create",
+                      {
+                        crimeTypeId: parseInt(value),
+                        description: crimeDescription,
+                        lat: setMarkerLocationRef.current.lat,
+                        long: setMarkerLocationRef.current.lng,
+                        location: "karur",
+                        isPatroll: true,
+                        loginId: 2,
+                        isCrime: isCrime,
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                    // await postRequest(
+                    //   "/api/crime/create/high",
+                    //   {
+                    //     crimeTypeId: parseInt(value),
+                    //     description: crimeDescription,
+                    //     lat: setMarkerLocationRef.current.lat,
+                    //     long: setMarkerLocationRef.current.lng,
+                    //     priority:4
+
+                    //   },
+                    //   { Authorization: `Bearer ${token}` }
+                    // );
+                  };
+
+                  fetchBackend();
+                  markerEnabledRef.current = false;
+
+                  console.log("Added new crime data:", value);
+                  const markerElement = PoliceMarker();
+                  const newMarker = new mapboxgl.Marker({
+                    element: markerElement,
+                  })
+                    .setLngLat([
+                      setMarkerLocationRef.current.lng,
+                      setMarkerLocationRef.current.lat,
+                    ]).setPopup(
+                      new mapboxgl.Popup({
+                        className: 'text-black'
+                      }).setHTML(`
+    <div class="text-black">
+     cctv
+    </div>
+  `)
+                    )
+                  if (map.current) {
+                    newMarker.addTo(map.current);
+                  }
+                  // Call updateHeatmapData to refresh the visualization
+                  if (isCrime) {
+                    updateHeatmapData();
+                  }
+
+                  handeleAssignCreate();
+                }
+              }}
+            />
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={isPoliceAssign}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="p-4">
+            <p className="font-bold text-2xl text-center text-red-500  text-content2-100 pb-5 pt-3">
+              You are Assigned to the crime spot
+            </p>
+            <p className="text-lg">Description:</p>
+            <p className="text-lg p-4 bg-[#3b3b42] rounded-lg ">
+              {crimeSpotDescription}
+            </p>
+            <div className="flex justify-center pt-5">
+              <ButtonComponent
+                isIcon={false}
+                buttonText="Accept"
+                ButtonVariant="bordered"
+                bgColor="bg-primary"
+                baseClassName="bg-primary border-none"
+                textClassName="text-background font-semibold text-[16px]"
+                handleOnClick={() => setIsPoliceAssign(false)}
+              />
+            </div>
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={userSpot}
+        onClose={handeleAssignCreate}
+        hideCloseButton
+        ModalContents={
+          <div className="">
+            <ComonPopup
+              //   icon={<FeaturedTickIcon />}
+              bodyContent={
+                <div>
+                  <p className="text-2xl text-center font-bold pb-8">
+                    Spot the Location
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    <SelectComponent
+                      value={value}
+                      setValue={setValue}
+                      contents={crimes}
+                    />
+                    <Textarea
+                      label="Description"
+                      value={crimeDescription}
+                      onValueChange={setCrimeDescription}
+                      placeholder="Enter your description"
+                    />
+                  </div>
+                </div>
+              }
+              button1Text="Cancel"
+              button2Text="Spot"
+              Button1Variant="bordered"
+              Button2Variant="bordered"
+              button1Bgcolor="bg-transparent"
+              Button1BaseClassName="border border-secondary-700 bg-transparent"
+              Button1textClassName="text-secondary-1001"
+              Button2textClassName="text-secondary-1001"
+              onButton1Click={() => setuserSpot(false)}
+              onButton2Click={() => {
+                const fetchBackend = async () => {
+                  console.log("Fetch");
+                  console.log(setMarkerLocationRef.current)
+                  if (
+                    setMarkerLocationRef.current?.lat
+                  ) {
+                    await postRequest(
+                      "/api/crime/create",
+                      {
+                        crimeTypeId: value,
+                        description: crimeDescription,
+                        lat: parseFloat(setMarkerLocationRef.current.lat),
+                        long: parseFloat(setMarkerLocationRef.current.lng),
+                        location: "karur",
+                        isCrime: true,
+                        isFake: false
+                      },
+                      { Authorization: `Bearer ${token}` }
+                    );
+                    const markerElement = SpotMarker();
+                    const marker = new mapboxgl.Marker({ element: markerElement })
+                      .setLngLat([setMarkerLocationRef.current.lng, setMarkerLocationRef.current.lat])
+                      .setPopup(new mapboxgl.Popup().setHTML(`<h3>crime created</h3>`));
+
+                    marker.addTo(map.current);
+                  }
+
+                };
+                fetchBackend();
+
+                setuserSpot(false)
+
+              }}
+            />
+          </div>
+        }
+        bodyClassName="p-0"
+        size="lg"
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+      <Modals
+        isopen={predict}
+        onClose={() => setPredict(false)}
+        hideCloseButton
+        ModalContents={
+          <Recommend map={map.current} />
+        }
+        bodyClassName="p-0"
+        size="lg"
+        ModalFooterContent={<div className="flex justify-center pt-3">
+          <ButtonComponent
+            isIcon={false}
+            buttonText="Done"
+            ButtonVariant="bordered"
+            bgColor="bg-primary"
+            baseClassName="bg-primary border-none"
+            textClassName="text-background font-semibold text-[16px]"
+            handleOnClick={() => setPredict(false)}
+          />
+        </div>}
+        modalClassName=" overflow-y-auto  scrollbar-hide sm:my-0 w-[25rem]"
+      />
+
+      <Drawer isOpen={isOpen} size="lg" onOpenChange={onOpenChange}>
+        <DrawerContent>
+
+          <>
+            <DrawerHeader className="flex flex-col gap-1 text-2xl">ChatBot</DrawerHeader>
+            <DrawerBody className="bg-black p-0">
+
+              <Chatbot />
+
+            </DrawerBody>
+
+          </>
+        </DrawerContent>
+      </Drawer>
+      {/* Status indicator */}
+      {role == "user" && (
+        <div className="absolute bottom-4 right-4 p-2 bg-white text-black rounded shadow">
+          {userLocation ? (
+            <div>
+              <p className="text-sm font-bold">Your Location:</p>
+              <p className="text-xs">Lat: {userLocation.lat.toFixed(6)}</p>
+              <p className="text-xs">Lng: {userLocation.lng.toFixed(6)}</p>
+              <p
+                className={`text-xs font-bold ${isNearHeatmap ? "text-red-500" : "text-green-500"
+                  }`}
+              >
+                {isNearHeatmap
+                  ? `Within 500m of heatmap (${nearestDistance?.toFixed(1)}m)`
+                  : nearestDistance
+                    ? `Outside heatmap area (${nearestDistance.toFixed(1)}m)`
+                    : "Outside heatmap area"}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm">Waiting for location...</p>
+          )}
+        </div>
+      )}
+    </div>
+    // Updated container and header
+  );
 }

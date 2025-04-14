@@ -1,11 +1,15 @@
 import { auth } from "@/utils";
-import { MapBox } from "./screens";
 import { Button, Input } from "@heroui/react";
 
 export default async function Home() {
   const data:any=await auth()
+      console.log(data)
   return (
     <div>
-      <MapBox role={data.user.role} token={data.user.token}/></div>
+      <Button color="primary"   type="submit">
+        Submit
+      </Button>
+      <Input label="Email"  type="email" color="success" />
+    </div>
   );
 }

@@ -1,35 +1,17 @@
+
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { auth } from "../auth";
-
-
-
+console.log(process.env.NEXT_PUBLIC_BASE_URL )
 // Create an Axios instance
 const axiosClient = axios.create({
-    baseURL: process.env.BASE_URL || "http://localhost:5000/",// Replace with your API URL
+    baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/",// Replace with your API URL
     headers: {
         "Content-Type": "application/json",
     },
 });
 
 //  **Request Interceptor**
-axiosClient.interceptors.request.use(
-  async  (config: InternalAxiosRequestConfig) => {
-    const data:any=await auth()
-    console.log(data)
 
-    if(data){
-           config.headers.Authorization = `Bearer ${data.token}`;
-
-    }
-     
-        console.log("Request Sent:", config);
-        return config;
-    },
-    (error:any) => {
-        console.error("Request Error:", error);
-        return Promise.reject(error);
-    }
-);
 
 //  **Response Interceptor**
 axiosClient.interceptors.response.use(
@@ -61,6 +43,7 @@ export async function postRequest<T>(
     payload?: object,
     headers = {},
 ) {
+    console.log(payload,headers)
 
     const response = await axiosClient.post<T>(URL, payload, {
         withCredentials: true,
@@ -103,7 +86,6 @@ export async function deleteRequest<T>(
     });
     return response;
 }
-
 
 export function isRequestSuccessful(response: AxiosResponse | number): boolean {
     if (typeof response === 'number') {
