@@ -46,7 +46,7 @@ const authOptions = {
   if (account?.provider === "google") {
     try {
       
-      const data:any = await postRequest("/api/auth/email", { email: user.email });
+      const data:any = await postRequest("/api/auth/fetchUserDetails", { email: user.email });
       // console.log("Data ",data);
       // This is where the issue is. Your API returns user data nested in data.data.user
       // But you're not accessing the right structure when assigning properties
