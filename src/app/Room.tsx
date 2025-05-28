@@ -1,13 +1,15 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, Suspense } from "react";
 import { RoomProvider } from "@liveblocks/react/suspense";
 import { useSearchParams } from "next/navigation";
 import { ClientSideSuspense } from "@liveblocks/react";
 
-export function Room({ children }: { children: ReactNode }) {
+// Create a separate component that uses useSearchParams
+function RoomContent({ children }: { children: ReactNode }) {
     const roomId = useExampleRoomId("liveblocks:examples:nextjs-yjs-monaco");
-console.log("Room ID:", roomId);
+    console.log("Room ID:", roomId);
+
     return (
         <RoomProvider
             id={roomId}
@@ -17,6 +19,15 @@ console.log("Room ID:", roomId);
         >
             <ClientSideSuspense fallback={<div>Loading</div>}>{children}</ClientSideSuspense>
         </RoomProvider>
+    );
+}
+
+// Main component with Suspense boundary
+export function Room({ children }: { children: ReactNode }) {
+    return (
+        <Suspense fallback={<div>Loading room data...</div>}>
+            <RoomContent>{children}</RoomContent>
+        </Suspense>
     );
 }
 
