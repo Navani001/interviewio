@@ -1,1 +1,0 @@
-export {FeaturedTickIcon} from './featuredTickIcon'

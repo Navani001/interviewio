@@ -1,47 +1,32 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Poppins } from "next/font/google";
+import "../globals.css";
 import { Providers } from "./provider";
-import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-poppins",
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900']
-});
-
-export const metadata: Metadata = {
-  title: "Crimex",
-  description: "crimex crime spot application",
+export const metadata = {
+  title: "Liveblocks",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html
-      lang="en"
-      data-theme="dark"
-      style={{ colorScheme: 'dark' }}
-      className={`${poppins.variable} ${geistSans.variable} ${geistMono.variable}`}
-    >
+    <html lang="en">
       <head>
-        <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet" />
+        <link
+          href="https://liveblocks.io/favicon-32x32.png"
+          rel="icon"
+          sizes="32x32"
+          type="image/png"
+        />
+        <link
+          href="https://liveblocks.io/favicon-16x16.png"
+          rel="icon"
+          sizes="16x16"
+          type="image/png"
+        />
       </head>
-      <body className="antialiased">
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

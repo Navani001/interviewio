@@ -12,9 +12,15 @@
     "@ai-sdk/google": "^1.2.2",
     "@heroui/react": "^2.7.5",
     "@heroui/theme": "2.4.12",
+    "@liveblocks/client": "^2.24.3",
+    "@liveblocks/node": "^2.24.3",
+    "@liveblocks/react": "^2.24.3",
+    "@liveblocks/yjs": "^2.24.3",
+    "@livekit/components-react": "^2.9.9",
     "@mapbox/mapbox-gl-directions": "^4.3.1",
     "@mapbox/mapbox-gl-geocoder": "^5.0.3",
     "@mapbox/search-js-react": "^1.0.0",
+    "@monaco-editor/react": "^4.7.0",
     "@nanostores/react": "github:ai/react",
     "@tailwindcss/cli": "^4.0.14",
     "ai": "^4.0.22",
@@ -23,6 +29,7 @@
     "framer-motion": "^12.5.0",
     "lucide-react": "^0.484.0",
     "mapbox-gl": "^3.10.0",
+    "monaco-editor": "^0.52.2",
     "next": "15.2.2",
     "next-auth": "^5.0.0-beta.25",
     "next-themes": "^0.4.4",
@@ -30,7 +37,10 @@
     "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^15.6.1"
+    "react-syntax-highlighter": "^15.6.1",
+    "y-monaco": "^0.1.6",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -46,5 +56,8 @@
     "tailwind-variants": "0.3.0",
     "tailwindcss": "3.4.16",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@liveblocks/core": "2.24.3"
   }
 }
