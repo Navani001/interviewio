@@ -26,6 +26,8 @@ import {
 } from 'livekit-client';
 import { useRouter } from 'next/navigation';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
+import { CollaborativeEditor } from '@/component/editor';
+import { Room2 } from '@/app/Room';
 
 const CONN_DETAILS_ENDPOINT =
   process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
@@ -76,11 +78,22 @@ export function PageClientImpl(props: {
           />
         </div>
       ) : (
-        <VideoConferenceComponent
-          connectionDetails={connectionDetails}
-          userChoices={preJoinChoices}
-          options={{ codec: props.codec, hq: props.hq }}
-        />
+        <div className='flex w-full h-full'>
+          <div className='w-4/6'> 
+          <main>
+          <Room2>
+                  <CollaborativeEditor />
+                </Room2>
+          </main>
+          </div>
+            <div className='w-2/6'>
+          <VideoConferenceComponent
+            connectionDetails={connectionDetails}
+            userChoices={preJoinChoices}
+            options={{ codec: props.codec, hq: props.hq }}
+          />
+         </div>
+        </div>
       )}
     </main>
   );

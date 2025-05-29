@@ -30,6 +30,13 @@ export function Room({ children }: { children: ReactNode }) {
         </Suspense>
     );
 }
+export function Room2({ children }: { children: ReactNode }) {
+    return (
+        <Suspense fallback={<div>Loading room data...</div>}>
+            <RoomContent>{children}</RoomContent>
+        </Suspense>
+    );
+}
 
 /**
  * This function is used when deploying an example on liveblocks.io.
