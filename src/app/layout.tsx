@@ -1,6 +1,8 @@
-import "../globals.css";
+import "./globals.css";
 import { Providers } from "./provider";
-
+import '../styles/globals.css';
+import '@livekit/components-styles';
+import '@livekit/components-styles/prefabs';
 export const metadata = {
   title: "Liveblocks",
 };
